@@ -1,101 +1,106 @@
-import Image from "next/image";
+import Link from "next/link";
+import { getLocale, getTranslations } from "next-intl/server";
+import { ArrowRight, Compass, Headphones, MapPin, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CityCard } from "@/components/discovery/city-card";
+import { getCities } from "@/lib/queries";
+import type { Locale } from "@/i18n/config";
 
-export default function Home() {
+export default async function LandingPage() {
+  const locale = (await getLocale()) as Locale;
+  const t = await getTranslations("landing");
+  const tc = await getTranslations("cities");
+  const cities = (await getCities()).slice(0, 8);
+
+  const steps = [
+    { icon: Compass, title: t("step1Title"), body: t("step1Body") },
+    { icon: MapPin, title: t("step2Title"), body: t("step2Body") },
+    { icon: Headphones, title: t("step3Title"), body: t("step3Body") },
+  ];
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <div className="pb-16">
+      {/* Hero */}
+      <section className="relative overflow-hidden border-b border-border">
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(60%_50%_at_50%_0%,rgba(229,57,53,0.22),transparent)]" />
+        <div className="container flex flex-col items-center gap-6 py-20 text-center md:py-28">
+          <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs text-text-secondary">
+            <Sparkles className="size-3.5 text-primary" />
+            {t("citiesSubtitle")}
+          </span>
+          <h1 className="max-w-3xl font-display text-4xl font-extrabold leading-[1.1] tracking-tight md:text-6xl">
+            {t("heroTitle")}
+          </h1>
+          <p className="max-w-xl text-base text-text-secondary md:text-lg">
+            {t("heroSubtitle")}
+          </p>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button asChild size="lg">
+              <Link href="/cities">
+                {t("heroCtaExplore")}
+                <ArrowRight className="size-4" />
+              </Link>
+            </Button>
+            <Button asChild size="lg" variant="outline">
+              <Link href="/itinerary/generate">{t("heroCtaItinerary")}</Link>
+            </Button>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </section>
+
+      {/* How it works */}
+      <section className="container py-16">
+        <h2 className="text-center font-display text-2xl font-bold md:text-3xl">
+          {t("howItWorks")}
+        </h2>
+        <div className="mt-10 grid gap-4 md:grid-cols-3">
+          {steps.map((s, i) => (
+            <div
+              key={i}
+              className="rounded-lg border border-border bg-card p-6"
+            >
+              <div className="flex size-11 items-center justify-center rounded-md bg-primary/15 text-primary">
+                <s.icon className="size-5" />
+              </div>
+              <p className="mt-4 font-metric text-xs text-text-muted">
+                0{i + 1}
+              </p>
+              <h3 className="mt-1 font-heading text-lg font-semibold">
+                {s.title}
+              </h3>
+              <p className="mt-2 text-sm text-text-secondary">{s.body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Featured cities */}
+      {cities.length > 0 && (
+        <section className="container">
+          <div className="flex items-end justify-between">
+            <h2 className="font-display text-2xl font-bold md:text-3xl">
+              {t("citiesTitle")}
+            </h2>
+            <Link
+              href="/cities"
+              className="flex items-center gap-1 text-sm text-text-secondary hover:text-text-primary"
+            >
+              {t("viewAllCities")}
+              <ArrowRight className="size-4" />
+            </Link>
+          </div>
+          <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+            {cities.map((city) => (
+              <CityCard
+                key={city.id}
+                city={city}
+                locale={locale}
+                toursLabel={tc("toursCount", { count: city.tourCount })}
+              />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
