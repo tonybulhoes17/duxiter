@@ -21,6 +21,7 @@ export async function SiteHeader() {
 
         <nav className="hidden items-center gap-1 md:flex">
           <NavLink href="/cities">{t("cities")}</NavLink>
+          <NavLink href="/identify">{t("identify")}</NavLink>
           <NavLink href="/itinerary/generate">{t("itinerary")}</NavLink>
           {user?.isAdmin && <NavLink href="/admin">Admin</NavLink>}
         </nav>

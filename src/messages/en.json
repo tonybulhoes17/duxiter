@@ -11,7 +11,8 @@
     "login": "Log in",
     "signup": "Sign up",
     "logout": "Log out",
-    "language": "Language"
+    "language": "Language",
+    "identify": "Identify"
   },
   "landing": {
     "heroTitle": "Your city, narrated.",
@@ -27,7 +28,10 @@
     "step3Body": "Follow the map stop by stop while the narration plays. Works offline too.",
     "citiesTitle": "Featured cities",
     "citiesSubtitle": "More added every month",
-    "viewAllCities": "View all cities"
+    "viewAllCities": "View all cities",
+    "scanTitle": "Standing in front of a building?",
+    "scanBody": "Point your camera at any monument, church or landmark and get its story — you don't need to be in a museum.",
+    "scanCta": "Identify by photo"
   },
   "cities": {
     "title": "Cities",
@@ -222,6 +226,19 @@
     "tryAgain": "Try again",
     "lowConfidence": "Not fully sure — this is a best guess.",
     "retake": "Retake",
-    "done": "Done"
+    "done": "Done",
+    "streetTitle": "Identify a place",
+    "pointStreet": "Point at a building, monument or landmark",
+    "upload": "Upload a photo",
+    "gettingLocation": "Getting your location…",
+    "noLocation": "Location off",
+    "notIdentified": "I couldn't identify this for sure",
+    "notIdentifiedHint": "Add your location or a clue and I'll try again.",
+    "partialInfo": "What I can tell",
+    "whereAreYou": "Where are you?",
+    "wherePlaceholder": "Street, neighbourhood or city",
+    "clueLabel": "Any clue?",
+    "cluePlaceholder": "e.g. \"it's a theatre\", \"plaque says 1920\"",
+    "tryAgainHints": "Try again"
   }
 }

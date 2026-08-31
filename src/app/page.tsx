@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
-import { ArrowRight, Compass, Headphones, MapPin, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  Camera,
+  Compass,
+  Headphones,
+  MapPin,
+  Sparkles,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CityCard } from "@/components/discovery/city-card";
 import { getCities } from "@/lib/queries";
@@ -45,6 +52,27 @@ export default async function LandingPage() {
               <Link href="/itinerary/generate">{t("heroCtaItinerary")}</Link>
             </Button>
           </div>
+        </div>
+      </section>
+
+      {/* Identify by photo */}
+      <section className="container py-10">
+        <div className="flex flex-col items-center gap-4 rounded-xl border border-border bg-card p-6 text-center sm:flex-row sm:text-left">
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+            <Camera className="size-6" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="font-heading text-lg font-semibold">
+              {t("scanTitle")}
+            </h2>
+            <p className="mt-1 text-sm text-text-secondary">{t("scanBody")}</p>
+          </div>
+          <Button asChild className="shrink-0">
+            <Link href="/identify">
+              <Camera className="size-4" />
+              {t("scanCta")}
+            </Link>
+          </Button>
         </div>
       </section>
 

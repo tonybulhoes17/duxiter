@@ -11,7 +11,8 @@
     "login": "Entrar",
     "signup": "Criar conta",
     "logout": "Sair",
-    "language": "Idioma"
+    "language": "Idioma",
+    "identify": "Identificar"
   },
   "landing": {
     "heroTitle": "Sua cidade, narrada.",
@@ -27,7 +28,10 @@
     "step3Body": "Siga o mapa parada por parada enquanto a narração toca. Funciona offline também.",
     "citiesTitle": "Cidades em destaque",
     "citiesSubtitle": "Novas cidades todo mês",
-    "viewAllCities": "Ver todas as cidades"
+    "viewAllCities": "Ver todas as cidades",
+    "scanTitle": "Parado em frente a um prédio?",
+    "scanBody": "Aponte a câmera para qualquer monumento, igreja ou marco e descubra a história — não precisa estar num museu.",
+    "scanCta": "Identificar por foto"
   },
   "cities": {
     "title": "Cidades",
@@ -222,6 +226,19 @@
     "tryAgain": "Tentar de novo",
     "lowConfidence": "Sem certeza total — é um palpite.",
     "retake": "Nova foto",
-    "done": "Pronto"
+    "done": "Pronto",
+    "streetTitle": "Identificar um lugar",
+    "pointStreet": "Aponte para um prédio, monumento ou marco",
+    "upload": "Enviar uma foto",
+    "gettingLocation": "Obtendo sua localização…",
+    "noLocation": "Localização desligada",
+    "notIdentified": "Não consegui identificar com certeza",
+    "notIdentifiedHint": "Adicione sua localização ou uma pista e eu tento de novo.",
+    "partialInfo": "O que dá para dizer",
+    "whereAreYou": "Onde você está?",
+    "wherePlaceholder": "Rua, bairro ou cidade",
+    "clueLabel": "Alguma pista?",
+    "cluePlaceholder": "ex.: \"é um teatro\", \"placa diz 1920\"",
+    "tryAgainHints": "Tentar de novo"
   }
 }
