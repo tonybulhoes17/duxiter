@@ -14,8 +14,7 @@ import { CityCard } from "@/components/discovery/city-card";
 import { getCities } from "@/lib/queries";
 import type { Locale } from "@/i18n/config";
 
-const HERO_IMAGE =
-  "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=1920&q=80";
+const HERO_IMAGE = "/hero.jpg";
 
 export default async function LandingPage() {
   const locale = (await getLocale()) as Locale;
@@ -38,19 +37,19 @@ export default async function LandingPage() {
   return (
     <div className="pb-16">
       {/* Hero */}
-      <section className="relative isolate overflow-hidden border-b border-border">
+      <section className="relative overflow-hidden border-b border-border bg-background">
         <Image
           src={HERO_IMAGE}
           alt=""
           fill
           priority
           sizes="100vw"
-          className="-z-20 object-cover object-[60%_center]"
+          className="object-cover object-[62%_28%]"
         />
-        <div className="absolute inset-0 -z-10 bg-gradient-to-r from-black/90 via-black/60 to-black/20" />
-        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-background via-background/45 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/55 to-black/20" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/25 to-black/30" />
 
-        <div className="container py-20 md:py-28">
+        <div className="container relative z-10 py-20 md:py-28">
           <div className="max-w-xl">
             <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/30 px-3 py-1 text-xs text-white/80 backdrop-blur-sm">
               <Sparkles className="size-3.5 text-primary" />
