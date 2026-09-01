@@ -16,6 +16,19 @@ export interface StartLocation {
   area?: string;
 }
 
+/** Free-form destination: any place on earth, given by the user. */
+export interface Destination {
+  /** raw user text — at least "City, Country" */
+  query: string;
+  /** optional finer detail: neighbourhood, street, landmark */
+  area?: string;
+  /** optional exact point, from GPS or a map pin */
+  lat?: number;
+  lng?: number;
+  /** best human label we resolved (reverse geocode or the query itself) */
+  label?: string;
+}
+
 export const INTERESTS = [
   { id: "history", emoji: "🏛️" },
   { id: "architecture", emoji: "🏗️" },

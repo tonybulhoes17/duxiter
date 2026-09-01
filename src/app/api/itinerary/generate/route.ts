@@ -13,6 +13,7 @@ import {
   INTERESTS,
   PACE_OPTIONS,
   START_MODES,
+  type Destination,
   type Pace,
   type StartLocation,
   type StartMode,
@@ -22,6 +23,11 @@ import type { Json, TravelMode } from "@/lib/database.types";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
+
+function clampCoord(v: unknown, max: number): number | undefined {
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) && Math.abs(n) <= max ? n : undefined;
+}
 
 export async function POST(req: NextRequest) {
   const supabase = createClient();
@@ -34,6 +40,13 @@ export async function POST(req: NextRequest) {
 
   let body: {
     citySlug?: string;
+    destination?: {
+      query?: string;
+      area?: string;
+      lat?: number;
+      lng?: number;
+      label?: string;
+    };
     minutes?: number;
     travelMode?: TravelMode;
     interests?: string[];
@@ -63,43 +76,88 @@ export async function POST(req: NextRequest) {
       ? body.startTime
       : undefined;
 
-  const startMode: StartMode = START_MODES.includes(body.start?.mode as never)
-    ? (body.start!.mode as StartMode)
-    : "auto";
-  const start: StartLocation = {
-    mode: startMode,
-    lat:
-      startMode === "current" && typeof body.start?.lat === "number"
-        ? body.start.lat
-        : undefined,
-    lng:
-      startMode === "current" && typeof body.start?.lng === "number"
-        ? body.start.lng
-        : undefined,
-    area:
-      startMode === "area" && typeof body.start?.area === "string"
-        ? body.start.area.slice(0, 120)
-        : undefined,
-  };
+  // ------- resolve the place: curated city OR free-form destination -------
+  const destQuery =
+    typeof body.destination?.query === "string"
+      ? body.destination.query.trim().slice(0, 120)
+      : "";
 
-  const { data: city } = await supabase
-    .from("cities")
-    .select("id, slug, name, country")
-    .eq("slug", body.citySlug ?? "")
-    .eq("is_active", true)
-    .maybeSingle();
-  if (!city) {
-    return NextResponse.json({ error: "unknown_city" }, { status: 400 });
+  let city: {
+    id: string;
+    slug: string;
+    country: string | null;
+    displayName: string;
+  } | null = null;
+  if (body.citySlug) {
+    const { data } = await supabase
+      .from("cities")
+      .select("id, slug, name, country")
+      .eq("slug", body.citySlug)
+      .eq("is_active", true)
+      .maybeSingle();
+    if (data) {
+      const nm = data.name as Record<string, string>;
+      city = {
+        id: data.id,
+        slug: data.slug,
+        country: data.country,
+        displayName: nm?.en ?? nm?.pt ?? data.slug,
+      };
+    }
   }
 
-  const cityName =
-    (city.name as Record<string, string>)?.en ??
-    (city.name as Record<string, string>)?.pt ??
-    city.slug;
+  const freeform = !city;
+  if (freeform && destQuery.length < 2) {
+    return NextResponse.json({ error: "no_destination" }, { status: 400 });
+  }
+
+  let placeName: string;
+  let country: string | null;
+  let start: StartLocation;
+  let destination: Destination | null = null;
+
+  if (city) {
+    placeName = city.displayName;
+    country = city.country;
+    const startMode: StartMode = START_MODES.includes(body.start?.mode as never)
+      ? (body.start!.mode as StartMode)
+      : "auto";
+    start = {
+      mode: startMode,
+      lat:
+        startMode === "current" ? clampCoord(body.start?.lat, 90) : undefined,
+      lng:
+        startMode === "current" ? clampCoord(body.start?.lng, 180) : undefined,
+      area:
+        startMode === "area" && typeof body.start?.area === "string"
+          ? body.start.area.slice(0, 120)
+          : undefined,
+    };
+  } else {
+    const area =
+      typeof body.destination?.area === "string"
+        ? body.destination.area.trim().slice(0, 200)
+        : undefined;
+    const lat = clampCoord(body.destination?.lat, 90);
+    const lng = clampCoord(body.destination?.lng, 180);
+    const label =
+      typeof body.destination?.label === "string"
+        ? body.destination.label.trim().slice(0, 160)
+        : undefined;
+    destination = { query: destQuery, area, lat, lng, label };
+    placeName = destQuery;
+    country = null;
+    start =
+      lat != null && lng != null
+        ? { mode: "current", lat, lng }
+        : area
+          ? { mode: "area", area }
+          : { mode: "auto" };
+  }
 
   const prompt = buildItineraryPrompt({
-    cityName,
-    country: city.country,
+    cityName: placeName,
+    country,
     language,
     travelMode,
     minutes,
@@ -107,9 +165,10 @@ export async function POST(req: NextRequest) {
     pace,
     start,
     startTime,
+    freeform,
   });
 
-  let itinerary;
+  let rawObject: unknown;
   try {
     const openai = createOpenAI();
     let text: string;
@@ -138,46 +197,81 @@ export async function POST(req: NextRequest) {
       text = completion.choices[0]?.message?.content ?? "{}";
     }
 
-    itinerary = normalizeItinerary(extractJsonObject(text));
+    rawObject = extractJsonObject(text);
   } catch (err) {
     console.error("itinerary generation failed", err);
     return NextResponse.json({ error: "generation_failed" }, { status: 502 });
   }
 
+  // model's honest "I couldn't find enough about this place" escape hatch
+  if (
+    rawObject &&
+    typeof rawObject === "object" &&
+    (rawObject as { error?: string }).error === "insufficient_info"
+  ) {
+    const reason = String(
+      (rawObject as { reason?: unknown }).reason ?? "",
+    ).slice(0, 400);
+    return NextResponse.json(
+      { error: "insufficient_info", reason },
+      { status: 422 },
+    );
+  }
+
+  const itinerary = normalizeItinerary(rawObject);
   if (!itinerary) {
     return NextResponse.json({ error: "generation_failed" }, { status: 502 });
   }
 
-  const { data: saved, error } = await supabase
+  const storedName = destination?.label || destination?.query || placeName;
+  const baseRow = {
+    user_id: user.id,
+    city_id: city?.id ?? null,
+    city_name: storedName,
+    language,
+    travel_mode: travelMode,
+    available_time_minutes: minutes,
+    interests,
+    pace,
+    start_time: startTime ?? null,
+    start_location: start as unknown as Json,
+    generated_stops: itinerary.stops as unknown as Json,
+    itinerary: itinerary as unknown as Json,
+    is_saved: false,
+  };
+
+  let ins = await supabase
     .from("ai_itineraries")
-    .insert({
-      user_id: user.id,
-      city_id: city.id,
-      city_name: cityName,
-      language,
-      travel_mode: travelMode,
-      available_time_minutes: minutes,
-      interests,
-      pace,
-      start_time: startTime ?? null,
-      start_location: start as unknown as Json,
-      generated_stops: itinerary.stops as unknown as Json,
-      itinerary: itinerary as unknown as Json,
-      is_saved: false,
-    })
+    .insert({ ...baseRow, destination: destination as unknown as Json })
     .select("id")
     .single();
 
-  if (error || !saved) {
-    console.error("itinerary save failed", error);
+  // `destination` column is added by migration 005 — fall back if it's not there yet
+  if (ins.error && /destination/i.test(ins.error.message ?? "")) {
+    ins = await supabase
+      .from("ai_itineraries")
+      .insert(baseRow)
+      .select("id")
+      .single();
+  }
+
+  if (ins.error || !ins.data) {
+    console.error("itinerary save failed", ins.error);
     return NextResponse.json({ error: "save_failed" }, { status: 500 });
   }
+  const saved = ins.data;
 
   await supabase.from("analytics_events").insert({
     event_type: "itinerary_generate",
-    city_id: city.id,
+    city_id: city?.id ?? null,
     user_id: user.id,
-    metadata: { travel_mode: travelMode, minutes, pace },
+    metadata: {
+      mode: freeform ? "free" : "curated",
+      minutes,
+      pace,
+      travel_mode: travelMode,
+      ...(freeform ? { destination: destQuery } : {}),
+    },
   });
 
   return NextResponse.json({ id: saved.id });

@@ -43,6 +43,8 @@ export function buildItineraryPrompt(opts: {
   pace: Pace;
   start: StartLocation;
   startTime?: string;
+  /** true when the place was typed by the user, not a curated Duxiter city */
+  freeform?: boolean;
 }): string {
   const {
     cityName,
@@ -54,15 +56,28 @@ export function buildItineraryPrompt(opts: {
     pace,
     start,
     startTime,
+    freeform = false,
   } = opts;
 
   const interestText =
     interests.length > 0 ? interests.join(", ") : "a well-rounded highlights tour";
 
+  const freeformBlock = freeform
+    ? `
+
+=== IMPORTANT: THIS PLACE WAS TYPED BY THE TRAVELLER ===
+"${cityName}${country ? `, ${country}" ` : '" '}is exactly what the traveller entered. First, using web search, work out precisely which real place this is (city, town, district or region, and country). If the name is ambiguous, pick the most likely match for a traveller and state which one you chose in "summary.profile".
+It may be a small town, a residential neighbourhood or a place with little tourist documentation. If information is thin:
+- Still build the best honest route from what genuinely exists: the main square, old town, parish church, historic or notable buildings, local museum, cemetery of note, riverfront, viewpoints, parks, markets, monuments to local figures, characteristic streets.
+- Say plainly in "summary.profile" and "practical_tips" that this is an off-the-beaten-path place with limited tourist infrastructure.
+- NEVER invent places, names, dates, events or coordinates. Every stop must be a real place you are confident exists at the coordinates you give. When unsure, leave it out.
+- If, after researching, you cannot assemble a route of at least 3 real, verifiable stops, DO NOT fabricate one. Instead return exactly: {"error":"insufficient_info","reason":"<one sentence, in ${LANG_NAME[language] ?? "English"}, explaining what little was found and suggesting the traveller try a larger nearby town or add a landmark>"}`
+    : "";
+
   return `You are a professional local tour guide, local researcher, route planner and audio-guide writer.
 Create a complete, personalised, realistically executable and genuinely interesting tour of ${cityName}${
     country ? `, ${country}` : ""
-  }. It must work as a real personal guide that leads the traveller from start to finish — not just a list of attractions.
+  }. It must work as a real personal guide that leads the traveller from start to finish — not just a list of attractions.${freeformBlock}
 
 === TRAVELLER ===
 - ${startText(start, cityName)}

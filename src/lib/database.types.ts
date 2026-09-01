@@ -160,6 +160,7 @@ export type AiItineraryRow = {
   pace: string | null;
   start_time: string | null;
   start_location: Json | null;
+  destination: Json | null;
   generated_stops: Json;
   itinerary: Json | null;
   is_saved: boolean;

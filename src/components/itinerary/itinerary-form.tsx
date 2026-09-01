@@ -8,8 +8,10 @@ import {
   Car,
   Check,
   Footprints,
+  Globe2,
   Loader2,
   LocateFixed,
+  Map as MapIcon,
   MapPin,
   Shuffle,
   Sparkles,
@@ -18,6 +20,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GeneratingAnimation } from "@/components/itinerary/generating-animation";
+import {
+  LocationPicker,
+  type PickedLocation,
+} from "@/components/itinerary/location-picker";
 import {
   INTERESTS,
   PACE_OPTIONS,
@@ -28,8 +34,61 @@ import {
   type TimeOption,
 } from "@/lib/itinerary";
 import { locales, localeLabels, type Locale } from "@/i18n/config";
+import { publicEnv } from "@/lib/env";
 import type { TravelMode } from "@/lib/database.types";
 import { cn } from "@/lib/utils";
+
+type Where = "curated" | "anywhere";
+
+async function reverseGeocode(
+  lat: number,
+  lng: number,
+  lang: string,
+): Promise<{ query: string; area?: string; label: string } | null> {
+  const key = publicEnv.googleMapsApiKey;
+  if (!key) return null;
+  try {
+    const r = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&language=${lang}&key=${key}`,
+    );
+    const j = (await r.json()) as {
+      status?: string;
+      results?: {
+        formatted_address?: string;
+        types?: string[];
+        address_components?: { long_name: string; types: string[] }[];
+      }[];
+    };
+    if (j.status !== "OK" || !j.results?.length) return null;
+    const best =
+      j.results.find((x) => x.types?.includes("street_address")) ??
+      j.results.find((x) => x.types?.includes("route")) ??
+      j.results[0];
+    const c = best.address_components ?? [];
+    const by = (t: string) =>
+      c.find((x) => x.types.includes(t))?.long_name;
+    const locality =
+      by("locality") ??
+      by("postal_town") ??
+      by("administrative_area_level_2") ??
+      by("administrative_area_level_1");
+    const country = by("country");
+    const area = by("sublocality") ?? by("neighborhood") ?? by("route");
+    return {
+      query:
+        [locality, country].filter(Boolean).join(", ") ||
+        best.formatted_address ||
+        `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+      area: area || undefined,
+      label:
+        best.formatted_address ||
+        [locality, country].filter(Boolean).join(", ") ||
+        `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+    };
+  } catch {
+    return null;
+  }
+}
 
 export function ItineraryForm({
   cities,
@@ -41,20 +100,41 @@ export function ItineraryForm({
   const router = useRouter();
   const params = useSearchParams();
 
-  const [citySlug, setCitySlug] = useState(
-    params.get("city") ?? cities[0]?.slug ?? "",
+  const cityParam = params.get("city");
+  const hasCities = cities.length > 0;
+
+  const [where, setWhere] = useState<Where>(
+    cityParam && hasCities ? "curated" : "anywhere",
   );
+
+  // curated
+  const [citySlug, setCitySlug] = useState(
+    cityParam ?? cities[0]?.slug ?? "",
+  );
+  const [startMode, setStartMode] = useState<StartMode>("auto");
+  const [startArea, setStartArea] = useState("");
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
+    null,
+  );
+  const [locating, setLocating] = useState(false);
+
+  // anywhere
+  const [destQuery, setDestQuery] = useState("");
+  const [destArea, setDestArea] = useState("");
+  const [destLabel, setDestLabel] = useState("");
+  const [destCoords, setDestCoords] = useState<
+    { lat: number; lng: number } | null
+  >(null);
+  const [destLocating, setDestLocating] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  // shared
   const [minutes, setMinutes] = useState<TimeOption>(120);
   const [mode, setMode] = useState<TravelMode>("walking");
   const [pace, setPace] = useState<Pace>("normal");
   const [interests, setInterests] = useState<InterestId[]>([]);
   const [language, setLanguage] = useState<Locale>(activeLocale);
   const [loading, setLoading] = useState(false);
-
-  const [startMode, setStartMode] = useState<StartMode>("auto");
-  const [startArea, setStartArea] = useState("");
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [locating, setLocating] = useState(false);
 
   function toggleInterest(id: InterestId) {
     setInterests((prev) =>
@@ -63,10 +143,7 @@ export function ItineraryForm({
   }
 
   function requestLocation() {
-    if (!navigator.geolocation) {
-      toast.error(t("geoUnavailable"));
-      return;
-    }
+    if (!navigator.geolocation) return toast.error(t("geoUnavailable"));
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -82,41 +159,101 @@ export function ItineraryForm({
     );
   }
 
+  function useMyDestination() {
+    if (!navigator.geolocation) return toast.error(t("geoUnavailable"));
+    setDestLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setDestCoords({ lat, lng });
+        const g = await reverseGeocode(lat, lng, language);
+        if (g) {
+          setDestQuery(g.query);
+          if (g.area) setDestArea(g.area);
+          setDestLabel(g.label);
+        } else {
+          setDestLabel(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+        }
+        setDestLocating(false);
+      },
+      () => {
+        setDestLocating(false);
+        toast.error(t("geoDenied"));
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  }
+
+  function onPickFromMap(loc: PickedLocation) {
+    setDestQuery(loc.query);
+    setDestArea(loc.area ?? "");
+    setDestLabel(loc.label);
+    setDestCoords({ lat: loc.lat, lng: loc.lng });
+    setPickerOpen(false);
+  }
+
   async function submit() {
-    if (!citySlug) return toast.error(t("pickCity"));
-    if (startMode === "current" && !coords) {
-      toast.error(t("geoNeeded"));
-      return;
+    if (where === "curated") {
+      if (!citySlug) return toast.error(t("pickCity"));
+      if (startMode === "current" && !coords) return toast.error(t("geoNeeded"));
+      if (startMode === "area" && !startArea.trim())
+        return toast.error(t("areaNeeded"));
+    } else {
+      if (destQuery.trim().length < 2)
+        return toast.error(t("destinationNeeded"));
     }
-    if (startMode === "area" && !startArea.trim()) {
-      toast.error(t("areaNeeded"));
-      return;
-    }
+
     setLoading(true);
     try {
       const now = new Date();
       const startTime = `${String(now.getHours()).padStart(2, "0")}:${String(
         now.getMinutes(),
       ).padStart(2, "0")}`;
+
+      const payload =
+        where === "curated"
+          ? {
+              citySlug,
+              start: {
+                mode: startMode,
+                lat: coords?.lat,
+                lng: coords?.lng,
+                area: startArea.trim() || undefined,
+              },
+            }
+          : {
+              destination: {
+                query: destQuery.trim(),
+                area: destArea.trim() || undefined,
+                lat: destCoords?.lat,
+                lng: destCoords?.lng,
+                label: destLabel.trim() || undefined,
+              },
+            };
+
       const res = await fetch("/api/itinerary/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          citySlug,
+          ...payload,
           minutes,
           travelMode: mode,
           pace,
           interests,
           language,
           startTime,
-          start: {
-            mode: startMode,
-            lat: coords?.lat,
-            lng: coords?.lng,
-            area: startArea.trim() || undefined,
-          },
         }),
       });
+
+      if (res.status === 422) {
+        const { reason } = (await res.json().catch(() => ({}))) as {
+          reason?: string;
+        };
+        setLoading(false);
+        toast.error(reason || t("insufficientInfo"), { duration: 8000 });
+        return;
+      }
       if (!res.ok) throw new Error();
       const { id } = await res.json();
       router.push(`/itinerary/${id}`);
@@ -138,89 +275,173 @@ export function ItineraryForm({
 
   return (
     <div className="mx-auto max-w-lg space-y-7">
-      {/* City */}
+      {/* Where */}
       <div className="space-y-2">
-        <Label htmlFor="city">{t("city")}</Label>
-        <select
-          id="city"
-          value={citySlug}
-          onChange={(e) => setCitySlug(e.target.value)}
-          className="h-11 w-full rounded-md border border-border bg-elevated px-3 text-sm text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <option value="" disabled>
-            {t("cityPlaceholder")}
-          </option>
-          {cities.map((c) => (
-            <option key={c.slug} value={c.slug}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-      </div>
+        <Label>{t("where")}</Label>
+        {hasCities && (
+          <div className="grid grid-cols-2 gap-2">
+            {(
+              [
+                ["curated", MapIcon, t("whereCurated")],
+                ["anywhere", Globe2, t("whereAnywhere")],
+              ] as const
+            ).map(([value, Icon, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setWhere(value)}
+                className={cn(
+                  "flex items-center justify-center gap-2 rounded-md border py-2.5 text-sm font-medium transition-colors",
+                  where === value
+                    ? "border-primary bg-primary/10 text-text-primary"
+                    : "border-border text-text-secondary hover:border-white/20",
+                )}
+              >
+                <Icon className="size-4" />
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
 
-      {/* Start point */}
-      <div className="space-y-2">
-        <Label>{t("startPoint")}</Label>
-        <div className="grid gap-2 sm:grid-cols-3">
-          {(
-            [
-              ["auto", Shuffle, t("startAuto")],
-              ["current", LocateFixed, t("startCurrent")],
-              ["area", MapPin, t("startArea")],
-            ] as const
-          ).map(([value, Icon, label]) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => {
-                setStartMode(value);
-                if (value === "current" && !coords) requestLocation();
-              }}
-              className={cn(
-                "flex items-center justify-center gap-2 rounded-md border py-2.5 text-sm font-medium transition-colors",
-                startMode === value
-                  ? "border-primary bg-primary/10 text-text-primary"
-                  : "border-border text-text-secondary hover:border-white/20",
-              )}
+        {where === "curated" ? (
+          <div className="space-y-1.5 pt-1">
+            <select
+              id="city"
+              value={citySlug}
+              onChange={(e) => setCitySlug(e.target.value)}
+              className="h-11 w-full rounded-md border border-border bg-elevated px-3 text-sm text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <Icon className="size-4" />
-              {label}
-            </button>
-          ))}
-        </div>
+              <option value="" disabled>
+                {t("cityPlaceholder")}
+              </option>
+              {cities.map((c) => (
+                <option key={c.slug} value={c.slug}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-text-muted">{t("curatedNote")}</p>
+          </div>
+        ) : (
+          <div className="space-y-3 pt-1">
+            <div className="space-y-1.5">
+              <Input
+                value={destQuery}
+                onChange={(e) => {
+                  setDestQuery(e.target.value);
+                  setDestLabel("");
+                  setDestCoords(null);
+                }}
+                placeholder={t("destinationPlaceholder")}
+              />
+              <p className="text-xs text-text-muted">{t("destinationHint")}</p>
+            </div>
 
-        {startMode === "current" && (
-          <p className="flex items-center gap-1.5 text-xs text-text-muted">
-            {locating ? (
-              <>
-                <Loader2 className="size-3.5 animate-spin" />
-                {t("locating")}
-              </>
-            ) : coords ? (
-              <>
-                <Check className="size-3.5 text-success" />
-                {t("locationCaptured")}
-              </>
-            ) : (
+            <Input
+              value={destArea}
+              onChange={(e) => setDestArea(e.target.value)}
+              placeholder={t("areaDetailPlaceholder")}
+            />
+
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={requestLocation}
-                className="underline underline-offset-2"
+                onClick={useMyDestination}
+                className="flex items-center justify-center gap-2 rounded-md border border-border py-2.5 text-sm font-medium text-text-secondary hover:border-white/20"
               >
-                {t("shareLocation")}
+                {destLocating ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <LocateFixed className="size-4" />
+                )}
+                {t("useLocation")}
               </button>
-            )}
-          </p>
-        )}
+              <button
+                type="button"
+                onClick={() => setPickerOpen(true)}
+                className="flex items-center justify-center gap-2 rounded-md border border-border py-2.5 text-sm font-medium text-text-secondary hover:border-white/20"
+              >
+                <MapPin className="size-4" />
+                {t("pickOnMap")}
+              </button>
+            </div>
 
-        {startMode === "area" && (
-          <Input
-            value={startArea}
-            onChange={(e) => setStartArea(e.target.value)}
-            placeholder={t("areaPlaceholder")}
-          />
+            {destLabel && (
+              <p className="flex items-start gap-1.5 text-xs text-text-secondary">
+                <Check className="mt-0.5 size-3.5 shrink-0 text-success" />
+                {destLabel}
+              </p>
+            )}
+          </div>
         )}
       </div>
+
+      {/* Start point (curated only) */}
+      {where === "curated" && (
+        <div className="space-y-2">
+          <Label>{t("startPoint")}</Label>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {(
+              [
+                ["auto", Shuffle, t("startAuto")],
+                ["current", LocateFixed, t("startCurrent")],
+                ["area", MapPin, t("startArea")],
+              ] as const
+            ).map(([value, Icon, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => {
+                  setStartMode(value);
+                  if (value === "current" && !coords) requestLocation();
+                }}
+                className={cn(
+                  "flex items-center justify-center gap-2 rounded-md border py-2.5 text-sm font-medium transition-colors",
+                  startMode === value
+                    ? "border-primary bg-primary/10 text-text-primary"
+                    : "border-border text-text-secondary hover:border-white/20",
+                )}
+              >
+                <Icon className="size-4" />
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {startMode === "current" && (
+            <p className="flex items-center gap-1.5 text-xs text-text-muted">
+              {locating ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin" />
+                  {t("locating")}
+                </>
+              ) : coords ? (
+                <>
+                  <Check className="size-3.5 text-success" />
+                  {t("locationCaptured")}
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={requestLocation}
+                  className="underline underline-offset-2"
+                >
+                  {t("shareLocation")}
+                </button>
+              )}
+            </p>
+          )}
+
+          {startMode === "area" && (
+            <Input
+              value={startArea}
+              onChange={(e) => setStartArea(e.target.value)}
+              placeholder={t("areaPlaceholder")}
+            />
+          )}
+        </div>
+      )}
 
       {/* Time */}
       <div className="space-y-2">
@@ -338,6 +559,14 @@ export function ItineraryForm({
         {t("generate")}
       </Button>
       <p className="text-center text-xs text-text-muted">{t("generateHint")}</p>
+
+      {pickerOpen && (
+        <LocationPicker
+          locale={language}
+          onPick={onPickFromMap}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
     </div>
   );
 }
