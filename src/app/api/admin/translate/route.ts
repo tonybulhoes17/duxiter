@@ -70,11 +70,21 @@ ${source}
       const v = parsed[t];
       if (typeof v === "string" && v.trim()) out[t] = v.trim();
     }
-    if (Object.keys(out).length === 0) throw new Error("empty");
+    if (Object.keys(out).length === 0) {
+      return NextResponse.json(
+        { error: "translate_failed", detail: "model returned no usable text" },
+        { status: 502 },
+      );
+    }
 
     return NextResponse.json({ translations: out });
   } catch (err) {
-    console.error("translate failed", err);
-    return NextResponse.json({ error: "translate_failed" }, { status: 502 });
+    const detail =
+      err instanceof Error ? err.message.slice(0, 200) : "unknown error";
+    console.error("translate failed", detail);
+    return NextResponse.json(
+      { error: "translate_failed", detail },
+      { status: 502 },
+    );
   }
 }

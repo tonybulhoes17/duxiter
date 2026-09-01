@@ -43,14 +43,25 @@ export function LocalizedField({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: source, from: tab }),
       });
-      if (!res.ok) throw new Error();
-      const { translations } = (await res.json()) as {
-        translations: LocalizedValue;
+      const data = (await res.json().catch(() => ({}))) as {
+        translations?: LocalizedValue;
+        error?: string;
+        detail?: string;
       };
-      onChange({ ...value, ...translations });
+      if (!res.ok || !data.translations) {
+        toast.error(
+          data.detail
+            ? `Translation failed: ${data.detail}`
+            : data.error === "unauthorized" || data.error === "forbidden"
+              ? "Translation failed: not signed in as admin."
+              : "Translation failed.",
+        );
+        return;
+      }
+      onChange({ ...value, ...data.translations });
       toast.success("Translated — review the other tabs");
     } catch {
-      toast.error("Translation failed.");
+      toast.error("Translation failed (network).");
     } finally {
       setTranslating(false);
     }
