@@ -31,7 +31,13 @@
     "viewAllCities": "View all cities",
     "scanTitle": "Standing in front of a building?",
     "scanBody": "Point your camera at any monument, church or landmark and get its story — you don't need to be in a museum.",
-    "scanCta": "Identify by photo"
+    "scanCta": "Identify by photo",
+    "f1Title": "GPS-guided audio",
+    "f1Body": "Stories that play at the right moment",
+    "f2Title": "Museum guides",
+    "f2Body": "Exhibits explained in an engaging way",
+    "f3Title": "AI itineraries",
+    "f3Body": "Personalized routes for your style"
   },
   "cities": {
     "title": "Cities",

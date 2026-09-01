@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { getLocale, getTranslations } from "next-intl/server";
 import {
   ArrowRight,
@@ -13,6 +14,9 @@ import { CityCard } from "@/components/discovery/city-card";
 import { getCities } from "@/lib/queries";
 import type { Locale } from "@/i18n/config";
 
+const HERO_IMAGE =
+  "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=1920&q=80";
+
 export default async function LandingPage() {
   const locale = (await getLocale()) as Locale;
   const t = await getTranslations("landing");
@@ -25,54 +29,79 @@ export default async function LandingPage() {
     { icon: Headphones, title: t("step3Title"), body: t("step3Body") },
   ];
 
+  const features = [
+    { icon: Headphones, title: t("f1Title"), body: t("f1Body") },
+    { icon: MapPin, title: t("f2Title"), body: t("f2Body") },
+    { icon: Sparkles, title: t("f3Title"), body: t("f3Body") },
+  ];
+
   return (
     <div className="pb-16">
       {/* Hero */}
-      <section className="relative overflow-hidden border-b border-border">
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(60%_50%_at_50%_0%,rgba(229,57,53,0.22),transparent)]" />
-        <div className="container flex flex-col items-center gap-6 py-20 text-center md:py-28">
-          <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs text-text-secondary">
-            <Sparkles className="size-3.5 text-primary" />
-            {t("citiesSubtitle")}
-          </span>
-          <h1 className="max-w-3xl font-display text-4xl font-extrabold leading-[1.1] tracking-tight md:text-6xl">
-            {t("heroTitle")}
-          </h1>
-          <p className="max-w-xl text-base text-text-secondary md:text-lg">
-            {t("heroSubtitle")}
-          </p>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Button asChild size="lg">
-              <Link href="/cities">
-                {t("heroCtaExplore")}
-                <ArrowRight className="size-4" />
-              </Link>
-            </Button>
-            <Button asChild size="lg" variant="outline">
-              <Link href="/itinerary/generate">{t("heroCtaItinerary")}</Link>
-            </Button>
-          </div>
-        </div>
-      </section>
+      <section className="relative isolate overflow-hidden border-b border-border">
+        <Image
+          src={HERO_IMAGE}
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="-z-20 object-cover object-[60%_center]"
+        />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-r from-black/90 via-black/60 to-black/20" />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-background via-background/45 to-transparent" />
 
-      {/* Identify by photo */}
-      <section className="container py-10">
-        <div className="flex flex-col items-center gap-4 rounded-xl border border-border bg-card p-6 text-center sm:flex-row sm:text-left">
-          <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
-            <Camera className="size-6" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h2 className="font-heading text-lg font-semibold">
-              {t("scanTitle")}
-            </h2>
-            <p className="mt-1 text-sm text-text-secondary">{t("scanBody")}</p>
-          </div>
-          <Button asChild className="shrink-0">
-            <Link href="/identify">
+        <div className="container py-20 md:py-28">
+          <div className="max-w-xl">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/30 px-3 py-1 text-xs text-white/80 backdrop-blur-sm">
+              <Sparkles className="size-3.5 text-primary" />
+              {t("citiesSubtitle")}
+            </span>
+            <h1 className="mt-5 font-display text-4xl font-extrabold leading-[1.05] tracking-tight text-white md:text-6xl">
+              {t("heroTitle")}
+            </h1>
+            <p className="mt-4 max-w-md text-base text-white/70 md:text-lg">
+              {t("heroSubtitle")}
+            </p>
+
+            <ul className="mt-8 space-y-4">
+              {features.map((f) => (
+                <li key={f.title} className="flex gap-3">
+                  <f.icon className="mt-0.5 size-6 shrink-0 text-primary" />
+                  <div>
+                    <p className="font-heading text-sm font-semibold text-white">
+                      {f.title}
+                    </p>
+                    <p className="text-sm text-white/65">{f.body}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Button asChild size="lg">
+                <Link href="/cities">
+                  {t("heroCtaExplore")}
+                  <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="border-white/25 bg-white/5 text-white hover:bg-white/10"
+              >
+                <Link href="/itinerary/generate">{t("heroCtaItinerary")}</Link>
+              </Button>
+            </div>
+
+            <Link
+              href="/identify"
+              className="mt-4 inline-flex items-center gap-1.5 text-sm text-white/70 hover:text-white"
+            >
               <Camera className="size-4" />
               {t("scanCta")}
             </Link>
-          </Button>
+          </div>
         </div>
       </section>
 
@@ -99,6 +128,27 @@ export default async function LandingPage() {
               <p className="mt-2 text-sm text-text-secondary">{s.body}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Identify by photo */}
+      <section className="container pb-6">
+        <div className="flex flex-col items-center gap-4 rounded-xl border border-border bg-card p-6 text-center sm:flex-row sm:text-left">
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+            <Camera className="size-6" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="font-heading text-lg font-semibold">
+              {t("scanTitle")}
+            </h2>
+            <p className="mt-1 text-sm text-text-secondary">{t("scanBody")}</p>
+          </div>
+          <Button asChild className="shrink-0">
+            <Link href="/identify">
+              <Camera className="size-4" />
+              {t("scanCta")}
+            </Link>
+          </Button>
         </div>
       </section>
 

@@ -31,7 +31,13 @@
     "viewAllCities": "Ver todas as cidades",
     "scanTitle": "Parado em frente a um prédio?",
     "scanBody": "Aponte a câmera para qualquer monumento, igreja ou marco e descubra a história — não precisa estar num museu.",
-    "scanCta": "Identificar por foto"
+    "scanCta": "Identificar por foto",
+    "f1Title": "Áudio guiado por GPS",
+    "f1Body": "Histórias que tocam no momento certo",
+    "f2Title": "Guias de museu",
+    "f2Body": "Exposições explicadas de forma envolvente",
+    "f3Title": "Roteiros com IA",
+    "f3Body": "Itinerários personalizados para o seu estilo"
   },
   "cities": {
     "title": "Cidades",
