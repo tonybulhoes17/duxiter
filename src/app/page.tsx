@@ -132,22 +132,30 @@ export default async function LandingPage() {
 
       {/* Identify by photo */}
       <section className="container pb-6">
-        <div className="flex flex-col items-center gap-4 rounded-xl border border-border bg-card p-6 text-center sm:flex-row sm:text-left">
-          <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
-            <Camera className="size-6" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h2 className="font-heading text-lg font-semibold">
+        <div className="relative overflow-hidden rounded-xl border border-border bg-background">
+          <Image
+            src="/identify-cta.jpg"
+            alt=""
+            fill
+            sizes="(min-width: 1200px) 1136px, 100vw"
+            className="object-cover object-[70%_center]"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-background via-black/65 to-transparent" />
+          <div className="relative z-10 max-w-md p-6 md:p-8">
+            <div className="flex size-12 items-center justify-center rounded-lg bg-primary/20 text-primary backdrop-blur-sm">
+              <Camera className="size-6" />
+            </div>
+            <h2 className="mt-4 font-heading text-xl font-semibold text-white">
               {t("scanTitle")}
             </h2>
-            <p className="mt-1 text-sm text-text-secondary">{t("scanBody")}</p>
+            <p className="mt-1.5 text-sm text-white/75">{t("scanBody")}</p>
+            <Button asChild className="mt-5">
+              <Link href="/identify">
+                <Camera className="size-4" />
+                {t("scanCta")}
+              </Link>
+            </Button>
           </div>
-          <Button asChild className="shrink-0">
-            <Link href="/identify">
-              <Camera className="size-4" />
-              {t("scanCta")}
-            </Link>
-          </Button>
         </div>
       </section>
 
