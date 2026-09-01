@@ -18,6 +18,7 @@ export async function GET() {
         };
 
   const out: Record<string, unknown> = {
+    diag_version: 3,
     env: {
       OPENAI_API_KEY: mask(process.env.OPENAI_API_KEY),
       OPENAI_TRANSLATE_MODEL: process.env.OPENAI_TRANSLATE_MODEL ?? "(default gpt-4o-mini)",
