@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Camera, ImageUp, Loader2, MapPin, RefreshCw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { publicEnv } from "@/lib/env";
+import { reverseGeocode } from "@/lib/geocode";
 
 type Phase = "camera" | "loading" | "result" | "denied" | "error";
 
@@ -20,32 +20,6 @@ interface IdentifyResult {
   confidence?: number | null;
   needs?: string[];
   sources?: string[];
-}
-
-async function reverseGeocode(
-  lat: number,
-  lng: number,
-  lang: string,
-): Promise<string | null> {
-  const key = publicEnv.googleMapsApiKey;
-  if (!key) return null;
-  try {
-    const r = await fetch(
-      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&language=${lang}&key=${key}`,
-    );
-    const j = (await r.json()) as {
-      status?: string;
-      results?: { formatted_address?: string; types?: string[] }[];
-    };
-    if (j.status !== "OK" || !j.results?.length) return null;
-    const pick =
-      j.results.find((x) => x.types?.includes("street_address")) ??
-      j.results.find((x) => x.types?.includes("route")) ??
-      j.results[0];
-    return pick.formatted_address ?? null;
-  } catch {
-    return null;
-  }
 }
 
 function downscale(
@@ -104,7 +78,7 @@ export function CameraIdentifier({
           locale,
         );
         if (alive) {
-          if (addr) setPlace(addr);
+          if (addr) setPlace(addr.label);
           setLocating(false);
         }
       },

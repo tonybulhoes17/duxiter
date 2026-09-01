@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { Crosshair, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { publicEnv } from "@/lib/env";
+import { reverseGeocode } from "@/lib/geocode";
 
 export interface PickedLocation {
   query: string;
@@ -16,13 +17,6 @@ export interface PickedLocation {
 }
 
 let optionsSet = false;
-
-function compByType(
-  comps: google.maps.GeocoderAddressComponent[] | undefined,
-  type: string,
-): string | undefined {
-  return comps?.find((c) => c.types.includes(type))?.long_name;
-}
 
 /** Full-screen map: tap to drop a pin, we reverse-geocode it. */
 export function LocationPicker({
@@ -38,7 +32,6 @@ export function LocationPicker({
   const ref = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markerRef = useRef<google.maps.Marker | null>(null);
-  const geocoderRef = useRef<google.maps.Geocoder | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">(
     publicEnv.googleMapsApiKey ? "loading" : "error",
   );
@@ -47,48 +40,15 @@ export function LocationPicker({
 
   async function resolve(lat: number, lng: number) {
     setResolving(true);
-    let out: PickedLocation = {
-      query: `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
-      label: `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+    const fallback = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    const r = await reverseGeocode(lat, lng, locale);
+    setPicked({
+      query: r?.query ?? fallback,
+      area: r?.area,
+      label: r?.label ?? fallback,
       lat,
       lng,
-    };
-    try {
-      const g = geocoderRef.current;
-      if (g) {
-        const { results } = await g.geocode({
-          location: { lat, lng },
-          language: locale,
-        });
-        const best =
-          results.find((r) => r.types.includes("street_address")) ??
-          results.find((r) => r.types.includes("route")) ??
-          results[0];
-        if (best) {
-          const c = best.address_components;
-          const locality =
-            compByType(c, "locality") ??
-            compByType(c, "postal_town") ??
-            compByType(c, "administrative_area_level_2") ??
-            compByType(c, "administrative_area_level_1");
-          const country = compByType(c, "country");
-          const area =
-            compByType(c, "sublocality") ??
-            compByType(c, "neighborhood") ??
-            compByType(c, "route");
-          out = {
-            query: [locality, country].filter(Boolean).join(", ") || out.query,
-            area: area || undefined,
-            label: best.formatted_address || out.label,
-            lat,
-            lng,
-          };
-        }
-      }
-    } catch {
-      /* keep coord fallback */
-    }
-    setPicked(out);
+    });
     setResolving(false);
   }
 
@@ -138,8 +98,8 @@ export function LocationPicker({
       optionsSet = true;
     }
 
-    Promise.all([importLibrary("maps"), importLibrary("geocoding")])
-      .then(([{ Map }, { Geocoder }]) => {
+    importLibrary("maps")
+      .then(({ Map }) => {
         if (cancelled || !ref.current) return;
         const map = new Map(ref.current, {
           center: { lat: 20, lng: 0 },
@@ -149,7 +109,6 @@ export function LocationPicker({
           gestureHandling: "greedy",
         });
         mapRef.current = map;
-        geocoderRef.current = new Geocoder();
         map.addListener("click", (e: google.maps.MapMouseEvent) => {
           if (e.latLng) drop(e.latLng.lat(), e.latLng.lng());
         });

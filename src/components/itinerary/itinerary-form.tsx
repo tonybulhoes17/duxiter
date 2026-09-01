@@ -34,61 +34,11 @@ import {
   type TimeOption,
 } from "@/lib/itinerary";
 import { locales, localeLabels, type Locale } from "@/i18n/config";
-import { publicEnv } from "@/lib/env";
+import { reverseGeocode } from "@/lib/geocode";
 import type { TravelMode } from "@/lib/database.types";
 import { cn } from "@/lib/utils";
 
 type Where = "curated" | "anywhere";
-
-async function reverseGeocode(
-  lat: number,
-  lng: number,
-  lang: string,
-): Promise<{ query: string; area?: string; label: string } | null> {
-  const key = publicEnv.googleMapsApiKey;
-  if (!key) return null;
-  try {
-    const r = await fetch(
-      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&language=${lang}&key=${key}`,
-    );
-    const j = (await r.json()) as {
-      status?: string;
-      results?: {
-        formatted_address?: string;
-        types?: string[];
-        address_components?: { long_name: string; types: string[] }[];
-      }[];
-    };
-    if (j.status !== "OK" || !j.results?.length) return null;
-    const best =
-      j.results.find((x) => x.types?.includes("street_address")) ??
-      j.results.find((x) => x.types?.includes("route")) ??
-      j.results[0];
-    const c = best.address_components ?? [];
-    const by = (t: string) =>
-      c.find((x) => x.types.includes(t))?.long_name;
-    const locality =
-      by("locality") ??
-      by("postal_town") ??
-      by("administrative_area_level_2") ??
-      by("administrative_area_level_1");
-    const country = by("country");
-    const area = by("sublocality") ?? by("neighborhood") ?? by("route");
-    return {
-      query:
-        [locality, country].filter(Boolean).join(", ") ||
-        best.formatted_address ||
-        `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
-      area: area || undefined,
-      label:
-        best.formatted_address ||
-        [locality, country].filter(Boolean).join(", ") ||
-        `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
-    };
-  } catch {
-    return null;
-  }
-}
 
 export function ItineraryForm({
   cities,
