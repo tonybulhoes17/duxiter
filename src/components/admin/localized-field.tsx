@@ -50,11 +50,13 @@ export function LocalizedField({
       };
       if (!res.ok || !data.translations) {
         toast.error(
-          data.detail
-            ? `Translation failed: ${data.detail}`
-            : data.error === "unauthorized" || data.error === "forbidden"
-              ? "Translation failed: not signed in as admin."
-              : "Translation failed.",
+          data.error === "unauthorized"
+            ? "Session expired — reload the page (Ctrl+R) and try again."
+            : data.error === "forbidden"
+              ? "Your account is not an admin."
+              : data.detail
+                ? `Translation failed: ${data.detail}`
+                : "Translation failed.",
         );
         return;
       }
