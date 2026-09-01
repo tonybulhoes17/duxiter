@@ -33,15 +33,30 @@ export async function GET() {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const r = await openai.chat.completions.create({
       model: process.env.OPENAI_TRANSLATE_MODEL ?? "gpt-4o-mini",
-      max_tokens: 10,
+      temperature: 0.2,
       response_format: { type: "json_object" },
-      messages: [{ role: "user", content: 'reply {"ok":true}' }],
+      messages: [
+        {
+          role: "system",
+          content: "You are a professional localizer. Output only valid JSON.",
+        },
+        {
+          role: "user",
+          content:
+            'Translate "Bom dia" from Brazilian Portuguese into English, Spanish. Return ONLY a JSON object keyed by language code (en, es).',
+        },
+      ],
     });
-    out.openai = { ok: true, reply: r.choices[0]?.message?.content ?? null };
+    const content = r.choices[0]?.message?.content ?? "{}";
+    out.openai = {
+      ok: true,
+      model: r.model,
+      parsed: JSON.parse(content),
+    };
   } catch (e) {
     out.openai = {
       ok: false,
-      error: e instanceof Error ? e.message.slice(0, 300) : String(e),
+      error: e instanceof Error ? e.message.slice(0, 400) : String(e),
     };
   }
 
