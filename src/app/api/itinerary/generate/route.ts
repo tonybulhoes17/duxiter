@@ -8,6 +8,7 @@ import {
   extractJsonObject,
 } from "@/lib/openai";
 import { buildItineraryPrompt } from "@/lib/itinerary-prompt";
+import { expandAudioguides, avgAudioguideWords } from "@/lib/itinerary-expand";
 import {
   normalizeItinerary,
   TIME_OPTIONS,
@@ -16,6 +17,7 @@ import {
   START_MODES,
   type Destination,
   type Pace,
+  type RichItinerary,
   type StartLocation,
   type StartMode,
 } from "@/lib/itinerary";
@@ -253,9 +255,29 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const itinerary = normalizeItinerary(rawObject);
+  let itinerary = normalizeItinerary(rawObject);
   if (!itinerary) {
     return NextResponse.json({ error: "generation_failed" }, { status: 502 });
+  }
+
+  // second pass: expand thin audioguides into full 400-550 word narration.
+  // Focused per-stop rewrites hit the length target far better than pass 1.
+  if (avgAudioguideWords(itinerary) < 340) {
+    try {
+      const expanded = await Promise.race([
+        expandAudioguides(
+          itinerary,
+          language,
+          destination?.label || destination?.query || placeName,
+        ),
+        new Promise<RichItinerary>((_, rej) =>
+          setTimeout(() => rej(new Error("expand timeout")), 24000),
+        ),
+      ]);
+      itinerary = expanded;
+    } catch (err) {
+      console.warn("audioguide expansion skipped:", (err as Error).message);
+    }
   }
 
   const storedName = destination?.label || destination?.query || placeName;
