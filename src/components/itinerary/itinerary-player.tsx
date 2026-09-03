@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -13,30 +13,52 @@ import {
   Clock,
   Eye,
   Footprints,
+  Headphones,
   Lightbulb,
+  Loader2,
   Navigation,
+  Pause,
+  Play,
+  RefreshCw,
   Route as RouteIcon,
   Share2,
   Umbrella,
 } from "lucide-react";
 import { MapView, type MapStop } from "@/components/player/map-view";
+import { useAudio, type AudioQueue } from "@/components/audio/audio-provider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { RichItinerary, ItineraryStop } from "@/lib/itinerary";
 import { publicEnv } from "@/lib/env";
+
+type AudioStatus = "idle" | "pending" | "ready" | "failed";
+interface StopAudio {
+  status: AudioStatus;
+  url?: string;
+  duration?: number | null;
+}
+export interface InitialAudio {
+  stop_index: number;
+  status: string;
+  audio_url: string | null;
+  duration_seconds: number | null;
+}
 
 export function ItineraryPlayer({
   itineraryId,
   cityName,
   itinerary,
   initialSaved,
+  initialAudios,
 }: {
   itineraryId: string;
   cityName: string;
   itinerary: RichItinerary;
   initialSaved: boolean;
+  initialAudios: InitialAudio[];
 }) {
   const t = useTranslations("itinerary");
+  const audio = useAudio();
   const [saved, setSaved] = useState(initialSaved);
   const [savingBusy, setSavingBusy] = useState(false);
   const [navMode, setNavMode] = useState(false);
@@ -44,6 +66,130 @@ export function ItineraryPlayer({
   const [sheetOpen, setSheetOpen] = useState(true);
 
   const { summary, stops, route_overview, practical_tips, plan_b } = itinerary;
+
+  // ---------- per-stop generated narration ----------
+  const [audios, setAudios] = useState<Record<number, StopAudio>>(() => {
+    const init: Record<number, StopAudio> = {};
+    for (const a of initialAudios) {
+      init[a.stop_index] = {
+        status: a.status === "ready" && a.audio_url ? "ready" : "idle",
+        url: a.audio_url ?? undefined,
+        duration: a.duration_seconds,
+      };
+    }
+    return init;
+  });
+  const audiosRef = useRef(audios);
+  audiosRef.current = audios;
+
+  const setStopAudio = useCallback((i: number, next: StopAudio) => {
+    setAudios((prev) => ({ ...prev, [i]: next }));
+  }, []);
+
+  // background-generate any missing clips (2 at a time, in order)
+  useEffect(() => {
+    let cancelled = false;
+    const todo = stops
+      .map((_, i) => i)
+      .filter((i) => {
+        const s = audiosRef.current[i]?.status;
+        return s !== "ready" && s !== "pending";
+      });
+    let active = 0;
+    let cursor = 0;
+
+    function pump() {
+      while (!cancelled && active < 2 && cursor < todo.length) {
+        const i = todo[cursor++];
+        active++;
+        setStopAudio(i, { status: "pending" });
+        fetch(`/api/itinerary/${itineraryId}/audio`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stop: i }),
+        })
+          .then((r) => (r.ok ? r.json() : Promise.reject(new Error())))
+          .then((d: { url: string; duration: number | null }) => {
+            if (!cancelled)
+              setStopAudio(i, {
+                status: "ready",
+                url: d.url,
+                duration: d.duration,
+              });
+          })
+          .catch(() => {
+            if (!cancelled) setStopAudio(i, { status: "failed" });
+          })
+          .finally(() => {
+            active--;
+            if (!cancelled) pump();
+          });
+      }
+    }
+    pump();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itineraryId, stops.length]);
+
+  function retryAudio(i: number) {
+    setStopAudio(i, { status: "pending" });
+    fetch(`/api/itinerary/${itineraryId}/audio`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stop: i }),
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error())))
+      .then((d: { url: string; duration: number | null }) =>
+        setStopAudio(i, { status: "ready", url: d.url, duration: d.duration }),
+      )
+      .catch(() => setStopAudio(i, { status: "failed" }));
+  }
+
+  // queue of whatever is ready right now, in stop order
+  const { queue, stopToPos } = useMemo(() => {
+    const tracks: AudioQueue["tracks"] = [];
+    const map = new Map<number, number>();
+    stops.forEach((s, i) => {
+      const a = audios[i];
+      if (a?.status === "ready" && a.url) {
+        map.set(i, tracks.length);
+        tracks.push({
+          id: `${itineraryId}:${i}`,
+          src: a.url,
+          title: s.title,
+          subtitle: summary.title,
+          durationHint: a.duration ?? null,
+          part: `${i + 1}/${stops.length}`,
+        });
+      }
+    });
+    return {
+      queue: {
+        key: itineraryId,
+        href: `/itinerary/${itineraryId}`,
+        tracks,
+      } as AudioQueue,
+      stopToPos: map,
+    };
+  }, [audios, stops, itineraryId, summary.title]);
+
+  const playStop = useCallback(
+    (i: number) => {
+      const pos = stopToPos.get(i);
+      if (pos == null) return;
+      audio.playQueue(queue, pos);
+    },
+    [audio, queue, stopToPos],
+  );
+
+  const readyCount = stopToPos.size;
+  const activeStopIndex =
+    audio.queueKey === itineraryId
+      ? [...stopToPos.entries()].find(([, pos]) => pos === audio.index)?.[0] ??
+        -1
+      : -1;
 
   const mapStops: MapStop[] = useMemo(
     () =>
@@ -97,6 +243,16 @@ export function ItineraryPlayer({
     }
   }
 
+  const stopAudioProps = (i: number) => ({
+    audio: audios[i] ?? { status: "idle" as AudioStatus },
+    isPlaying: activeStopIndex === i && audio.playing,
+    onPlay: () => {
+      if (activeStopIndex === i) audio.toggle();
+      else playStop(i);
+    },
+    onRetry: () => retryAudio(i),
+  });
+
   // ---- Immersive navigation ----
   if (navMode) {
     const stop = stops[idx];
@@ -141,8 +297,12 @@ export function ItineraryPlayer({
             </button>
           </div>
 
+          <div className="px-4 pt-3">
+            <StopAudioControl t={t} {...stopAudioProps(idx)} />
+          </div>
+
           {sheetOpen && (
-            <div className="max-h-[48vh] space-y-3 overflow-y-auto px-4 py-3">
+            <div className="max-h-[42vh] space-y-3 overflow-y-auto px-4 py-3">
               <StopBody t={t} stop={stop} />
             </div>
           )}
@@ -215,8 +375,30 @@ export function ItineraryPlayer({
           ) : null}
         </div>
 
+        {/* Listen CTA */}
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button onClick={() => setNavMode(true)}>
+          <Button
+            onClick={() => {
+              if (activeStopIndex >= 0) audio.toggle();
+              else {
+                const first = [...stopToPos.keys()].sort((a, b) => a - b)[0];
+                if (first != null) playStop(first);
+              }
+            }}
+            disabled={readyCount === 0}
+          >
+            {activeStopIndex >= 0 && audio.playing ? (
+              <Pause className="size-4" />
+            ) : (
+              <Headphones className="size-4" />
+            )}
+            {readyCount === 0
+              ? t("audioPreparing")
+              : activeStopIndex >= 0 && audio.playing
+                ? t("pauseStop")
+                : t("listen")}
+          </Button>
+          <Button variant="outline" onClick={() => setNavMode(true)}>
             <Navigation className="size-4" />
             {t("startNav")}
           </Button>
@@ -233,6 +415,12 @@ export function ItineraryPlayer({
             {t("share")}
           </Button>
         </div>
+        {readyCount > 0 && readyCount < stops.length && (
+          <p className="mt-2 flex items-center gap-1.5 text-xs text-text-muted">
+            <Loader2 className="size-3 animate-spin" />
+            {t("audioProgress", { ready: readyCount, total: stops.length })}
+          </p>
+        )}
 
         {route_overview && (
           <div className="mt-6 rounded-lg border border-border bg-card p-4">
@@ -246,10 +434,7 @@ export function ItineraryPlayer({
 
         <ol className="mt-6 space-y-4">
           {stops.map((stop, i) => (
-            <li
-              key={i}
-              className="rounded-lg border border-border bg-card p-4"
-            >
+            <li key={i} className="rounded-lg border border-border bg-card p-4">
               <div className="flex items-center gap-2">
                 <span className="flex size-7 items-center justify-center rounded-full bg-subtle font-metric text-xs text-text-secondary">
                   {i + 1}
@@ -274,6 +459,10 @@ export function ItineraryPlayer({
                   </span>
                 ) : null}
               </p>
+
+              <div className="mt-3">
+                <StopAudioControl t={t} {...stopAudioProps(i)} />
+              </div>
 
               <div className="mt-3">
                 <StopBody t={t} stop={stop} />
@@ -314,6 +503,62 @@ export function ItineraryPlayer({
   );
 }
 
+function StopAudioControl({
+  audio,
+  isPlaying,
+  onPlay,
+  onRetry,
+  t,
+}: {
+  audio: StopAudio;
+  isPlaying: boolean;
+  onPlay: () => void;
+  onRetry: () => void;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  if (audio.status === "ready") {
+    return (
+      <button
+        type="button"
+        onClick={onPlay}
+        className="flex w-full items-center gap-2 rounded-md border border-border bg-elevated px-3 py-2 text-sm font-medium text-text-primary hover:border-white/20"
+      >
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+          {isPlaying ? (
+            <Pause className="size-4" />
+          ) : (
+            <Play className="size-4 translate-x-px" />
+          )}
+        </span>
+        {isPlaying ? t("pauseStop") : t("playStop")}
+        {audio.duration ? (
+          <span className="ml-auto font-metric text-xs text-text-muted">
+            {Math.round(audio.duration / 60)} min
+          </span>
+        ) : null}
+      </button>
+    );
+  }
+  if (audio.status === "failed") {
+    return (
+      <button
+        type="button"
+        onClick={onRetry}
+        className="flex w-full items-center gap-2 rounded-md border border-dashed border-border px-3 py-2 text-sm text-text-muted hover:text-text-secondary"
+      >
+        <RefreshCw className="size-4" />
+        {t("audioFailed")} — {t("audioRetry")}
+      </button>
+    );
+  }
+  return (
+    <div className="flex w-full items-center gap-2 rounded-md border border-dashed border-border px-3 py-2 text-sm text-text-muted">
+      <Loader2 className="size-4 animate-spin" />
+      {t("audioPreparing")}
+    </div>
+  );
+}
+
 function StopBody({
   stop,
   t,
@@ -331,10 +576,6 @@ function StopBody({
 
       <p className="whitespace-pre-line text-sm leading-relaxed text-text-secondary">
         {stop.audioguide}
-      </p>
-
-      <p className="rounded-md border border-border bg-elevated px-3 py-2 text-xs text-text-muted">
-        🎵 {t("audioSoon")}
       </p>
 
       {stop.dont_miss.length > 0 && (

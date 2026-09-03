@@ -36,7 +36,14 @@ export default async function ItineraryPage({ params }: Props) {
     normalizeItinerary(it.itinerary) ?? normalizeItinerary(it.generated_stops);
   if (!rich) notFound();
 
-  const user = await getSessionUser();
+  const [user, audios] = await Promise.all([
+    getSessionUser(),
+    createAdminClient()
+      .from("itinerary_audios")
+      .select("stop_index, status, audio_url, duration_seconds")
+      .eq("itinerary_id", it.id)
+      .eq("kind", "stop"),
+  ]);
 
   return (
     <ItineraryPlayer
@@ -44,6 +51,7 @@ export default async function ItineraryPage({ params }: Props) {
       cityName={it.city_name ?? ""}
       itinerary={rich}
       initialSaved={!!it.is_saved && user?.id === it.user_id}
+      initialAudios={audios.data ?? []}
     />
   );
 }

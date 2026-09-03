@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
-import { Download, Sparkles, Ticket } from "lucide-react";
+import { BookmarkCheck, Download, Sparkles, Ticket } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth";
 import { localeLabels, type Locale } from "@/i18n/config";
@@ -17,6 +17,7 @@ export default async function ProfilePage() {
 
   const locale = (await getLocale()) as Locale;
   const t = await getTranslations("tour");
+  const ti = await getTranslations("itinerary");
   const supabase = createClient();
 
   const [{ data: purchases }, { data: savedItinerariesData }] = await Promise.all([
@@ -27,15 +28,17 @@ export default async function ProfilePage() {
       .eq("status", "completed"),
     supabase
       .from("ai_itineraries")
-      .select("id, city_name, generated_stops")
+      .select("id, city_name, generated_stops, is_saved, created_at")
       .eq("user_id", user.id)
-      .eq("is_saved", true)
-      .order("created_at", { ascending: false }),
+      .order("created_at", { ascending: false })
+      .limit(60),
   ]);
 
   const savedItineraries = (savedItinerariesData ?? []) as {
     id: string;
     city_name: string | null;
+    is_saved: boolean | null;
+    created_at: string;
     generated_stops: unknown[];
   }[];
 
@@ -129,16 +132,16 @@ export default async function ProfilePage() {
       <section className="mt-10">
         <h2 className="flex items-center gap-2 font-display text-xl font-bold">
           <Sparkles className="size-5 text-primary" />
-          Saved itineraries
+          {ti("myItineraries")}
         </h2>
         {savedItineraries.length === 0 ? (
           <p className="mt-3 text-sm text-text-muted">
-            Saved AI itineraries will appear here.{" "}
+            {ti("myItinerariesEmpty")}{" "}
             <Link
               href="/itinerary/generate"
               className="underline underline-offset-4"
             >
-              Build one
+              {ti("generate")}
             </Link>
           </p>
         ) : (
@@ -147,20 +150,24 @@ export default async function ProfilePage() {
               <li key={it.id}>
                 <Link
                   href={`/itinerary/${it.id}`}
-                  className="flex items-center justify-between rounded-lg border border-border bg-card p-4 hover:border-white/20"
+                  className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card p-4 hover:border-white/20"
                 >
-                  <div>
-                    <p className="font-heading text-sm font-semibold">
+                  <div className="min-w-0">
+                    <p className="truncate font-heading text-sm font-semibold">
                       {it.city_name}
                     </p>
                     <p className="font-metric text-xs text-text-muted">
                       {Array.isArray(it.generated_stops)
                         ? it.generated_stops.length
                         : 0}{" "}
-                      stops
+                      · {new Date(it.created_at).toLocaleDateString(locale)}
                     </p>
                   </div>
-                  <Sparkles className="size-4 text-primary" />
+                  {it.is_saved ? (
+                    <BookmarkCheck className="size-4 shrink-0 text-primary" />
+                  ) : (
+                    <Sparkles className="size-4 shrink-0 text-text-muted" />
+                  )}
                 </Link>
               </li>
             ))}

@@ -193,9 +193,15 @@ export function ItineraryForm({
           interests,
           language,
           startTime,
+          tzOffsetMinutes: now.getTimezoneOffset(),
         }),
       });
 
+      if (res.status === 402) {
+        setLoading(false);
+        toast.error(t("dailyLimit"), { duration: 9000 });
+        return;
+      }
       if (res.status === 422) {
         const { reason } = (await res.json().catch(() => ({}))) as {
           reason?: string;

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   createOpenAI,
   ITINERARY_MODEL,
@@ -54,11 +55,41 @@ export async function POST(req: NextRequest) {
     pace?: Pace;
     startTime?: string;
     start?: { mode?: StartMode; lat?: number; lng?: number; area?: string };
+    tzOffsetMinutes?: number;
   };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "invalid_body" }, { status: 400 });
+  }
+
+  // ---- daily quota: 1 free AI itinerary per calendar day, then paid credits ----
+  const tz = Number.isFinite(body.tzOffsetMinutes)
+    ? (body.tzOffsetMinutes as number)
+    : 0;
+  const localNow = Date.now() - tz * 60000;
+  const startOfLocalDayUtc =
+    Math.floor(localNow / 86400000) * 86400000 + tz * 60000;
+  const { count: todayCount } = await supabase
+    .from("ai_itineraries")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .gte("created_at", new Date(startOfLocalDayUtc).toISOString());
+
+  let consumeCredit = false;
+  if ((todayCount ?? 0) >= 1) {
+    const { data: cred } = await supabase
+      .from("itinerary_credits")
+      .select("balance")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (!cred || cred.balance <= 0) {
+      return NextResponse.json(
+        { error: "daily_limit", creditsAvailable: false },
+        { status: 402 },
+      );
+    }
+    consumeCredit = true;
   }
 
   const minutes = TIME_OPTIONS.includes(body.minutes as never)
@@ -260,6 +291,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "save_failed" }, { status: 500 });
   }
   const saved = ins.data;
+
+  if (consumeCredit) {
+    // service-role write — RLS only grants the user read access
+    const admin = createAdminClient();
+    const { data: cur } = await admin
+      .from("itinerary_credits")
+      .select("balance")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (cur && cur.balance > 0) {
+      await admin
+        .from("itinerary_credits")
+        .update({ balance: cur.balance - 1 })
+        .eq("user_id", user.id);
+    }
+  }
 
   await supabase.from("analytics_events").insert({
     event_type: "itinerary_generate",

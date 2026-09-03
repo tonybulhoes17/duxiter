@@ -175,7 +175,17 @@
     "mapConfirm": "Use this location",
     "mapCancel": "Cancel",
     "mapUnavailable": "The map is not available right now.",
-    "resolvingLocation": "Finding the address…"
+    "resolvingLocation": "Finding the address…",
+    "listen": "Play the tour",
+    "playStop": "Play",
+    "pauseStop": "Pause",
+    "audioPreparing": "preparing audio…",
+    "audioProgress": "{ready} of {total} stops ready",
+    "audioFailed": "audio failed",
+    "audioRetry": "retry",
+    "dailyLimit": "You have used today’s free itinerary. Come back tomorrow to generate another.",
+    "myItineraries": "My itineraries",
+    "myItinerariesEmpty": "Your AI itineraries show up here."
   },
   "auth": {
     "loginTitle": "Welcome back",

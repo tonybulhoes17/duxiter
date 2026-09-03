@@ -167,6 +167,29 @@ export type AiItineraryRow = {
   created_at: string;
 };
 
+export type ItineraryAudioRow = {
+  id: string;
+  itinerary_id: string;
+  stop_index: number;
+  kind: string;
+  audio_path: string | null;
+  audio_url: string | null;
+  duration_seconds: number | null;
+  voice: string | null;
+  char_count: number | null;
+  status: string;
+  error: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ItineraryCreditRow = {
+  user_id: string;
+  balance: number;
+  lifetime_purchased: number;
+  updated_at: string;
+};
+
 export type OfflineDownloadRow = {
   id: string;
   user_id: string;
@@ -252,6 +275,8 @@ export type Database = {
       reviews: Table<ReviewRow>;
       review_replies: Table<ReviewReplyRow>;
       ai_itineraries: Table<AiItineraryRow>;
+      itinerary_audios: Table<ItineraryAudioRow>;
+      itinerary_credits: Table<ItineraryCreditRow>;
       offline_downloads: Table<OfflineDownloadRow>;
       discount_codes: Table<DiscountCodeRow>;
       discount_code_uses: Table<DiscountCodeUseRow>;

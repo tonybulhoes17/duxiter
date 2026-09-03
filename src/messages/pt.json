@@ -175,7 +175,17 @@
     "mapConfirm": "Usar este local",
     "mapCancel": "Cancelar",
     "mapUnavailable": "O mapa não está disponível agora.",
-    "resolvingLocation": "Buscando o endereço…"
+    "resolvingLocation": "Buscando o endereço…",
+    "listen": "Ouvir o roteiro",
+    "playStop": "Ouvir",
+    "pauseStop": "Pausar",
+    "audioPreparing": "preparando áudio…",
+    "audioProgress": "{ready} de {total} paradas prontas",
+    "audioFailed": "falha no áudio",
+    "audioRetry": "tentar de novo",
+    "dailyLimit": "Você já gerou seu roteiro grátis de hoje. Volte amanhã para gerar outro.",
+    "myItineraries": "Meus roteiros",
+    "myItinerariesEmpty": "Seus roteiros de IA aparecem aqui."
   },
   "auth": {
     "loginTitle": "Bem-vindo de volta",
