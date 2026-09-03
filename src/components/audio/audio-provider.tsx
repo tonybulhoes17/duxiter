@@ -19,6 +19,9 @@ export interface AudioTrack {
   durationHint?: number | null;
   /** e.g. "Parte 2/3" when a stop has multiple audio segments */
   part?: string | null;
+  /** when true, playback stops (not auto-advances) after this track ends —
+   *  used for walking-direction clips so the traveller resumes on arrival */
+  pauseAfter?: boolean;
 }
 
 export interface AudioQueue {
@@ -319,7 +322,15 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         }}
         onEnded={() => {
           setPlaying(false);
-          if (queue && index < queue.tracks.length - 1) next();
+          if (!queue || index >= queue.tracks.length - 1) return;
+          if (current?.pauseAfter) {
+            // advance the pointer but wait for the traveller to press play
+            const i = index + 1;
+            setIndex(i);
+            load(queue, i, false);
+          } else {
+            next();
+          }
         }}
         onError={() => {
           setLoading(false);

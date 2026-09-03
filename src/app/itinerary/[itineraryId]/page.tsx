@@ -40,9 +40,8 @@ export default async function ItineraryPage({ params }: Props) {
     getSessionUser(),
     createAdminClient()
       .from("itinerary_audios")
-      .select("stop_index, status, audio_url, duration_seconds")
-      .eq("itinerary_id", it.id)
-      .eq("kind", "stop"),
+      .select("stop_index, kind, status, audio_url, duration_seconds")
+      .eq("itinerary_id", it.id),
   ]);
 
   return (

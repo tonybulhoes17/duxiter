@@ -102,9 +102,20 @@ Build a geographically logical route from the starting point. Minimise backtrack
     travelMode === "car" ? "car tour use driving logic (parking, panoramic roads, quick stops)" : "walking tour keep consecutive stops close; the walk between stops is part of the experience"
   }.
 
-=== AUDIO-GUIDE ===
-Each stop's "audioguide" MUST be 250–450 words (about 2–4 minutes spoken) — this is the core of the product, do not write short. It must read like an experienced guide speaking directly to the traveller: a STORY, not an encyclopedia entry. Cover, when relevant: what it is, why it matters, when it was built, historical context, key events and figures, architecture and art, culture, curiosities, legends (say clearly when something is legend), what to look at, and how it connects to other stops. Use natural spoken phrasing ("Observe the building on your left…", "Before moving on, look up at…", "Imagine this square in the 1800s…").
-Do NOT put any URLs, brackets, footnote markers or source citations inside "audioguide", "dont_miss" or "to_next_stop" — those texts are read aloud. You may cite sources only inside "practical_tips".
+=== AUDIO-GUIDE (this IS the product) ===
+The "audioguide" of each stop is the whole reason the traveller is using this app. Everything else is scaffolding. A thin audioguide makes the product worthless.
+
+LENGTH — non-negotiable: every "audioguide" must be between 380 and 550 words. Not 200. Not 250. Count your words as you write and keep going until you are past 380. If you find yourself wrapping up before 380 words, you have left out material the traveller wants — add more: another layer of history, another figure, another anecdote, more about what to look at right now, more about how it connects to the rest of the walk. Do NOT be concise. Do NOT summarise. No bullet points, no lists — flowing spoken paragraphs only.
+
+VOICE: an experienced local guide speaking out loud to one traveller who is standing in front of the place right now. A STORY, not an encyclopedia entry. Natural spoken phrasing: "Look up at the left tower…", "Take a few steps closer and notice…", "Picture this square two hundred years ago…", "Before we move on…".
+
+CONTENT to weave together (never as a checklist): what you are looking at and why it matters; when and by whom it was built, and what was happening in the city and country then; the specific people involved and a concrete human story, anecdote or legend (say clearly when something is legend); exactly what to look at physically — materials, carvings, colours, proportions, the view; sounds, light, atmosphere; and how this place connects to the previous stop, the next stop and the wider city. Use real names, real dates and real events from your research — three vivid details told richly beat ten facts listed.
+
+"intro_narration": 70–110 words, spoken — greet the traveller, name the city/area, say the walk length and roughly how many stops, set the mood, and tell them to walk to the first stop and press play when they arrive.
+
+"to_next_stop": 55–95 words, spoken — guide them turn by turn as they walk ("Leave the square by the street to your right, keep the church behind you…"), and give them one specific thing to notice or think about on the way.
+
+Do NOT put any URLs, brackets, footnote markers or source citations inside "intro_narration", "audioguide", "dont_miss" or "to_next_stop" — those texts are read aloud. Cite sources only inside "practical_tips".
 
 === OUTPUT ===
 Return ONLY a valid JSON object (no markdown fences, no prose before or after) with EXACTLY this shape:
@@ -120,6 +131,7 @@ Return ONLY a valid JSON object (no markdown fences, no prose before or after) w
     "start_time": "${startTime ?? "09:00"}",
     "end_time": "HH:MM"
   },
+  "intro_narration": "70-110 word spoken welcome in ${LANG_NAME[language] ?? "English"}",
   "route_overview": "Start → Stop 1 → Stop 2 → … → end (with rough distance/time)",
   "stops": [
     {
@@ -132,9 +144,9 @@ Return ONLY a valid JSON object (no markdown fences, no prose before or after) w
       "distance_from_previous_m": <int>,
       "travel_minutes_from_previous": <int>,
       "category": "monument|museum|viewpoint|market|restaurant|park|church|square|neighbourhood|street",
-      "audioguide": "250-450 word spoken narrative in ${LANG_NAME[language] ?? "English"}",
+      "audioguide": "380-550 words, flowing spoken narrative in ${LANG_NAME[language] ?? "English"} — obey the AUDIO-GUIDE LENGTH rule above, this is mandatory",
       "dont_miss": ["specific physical details to look for on site"],
-      "to_next_stop": "how to walk/drive to the next stop, which streets, what to notice on the way, one curiosity",
+      "to_next_stop": "55-95 word spoken, turn-by-turn walking directions to the next stop plus one thing to notice",
       "interesting_fact": "one surprising fact most tourists don't know"
     }
   ],
@@ -142,6 +154,7 @@ Return ONLY a valid JSON object (no markdown fences, no prose before or after) w
   "plan_b": ["what to drop or swap if it rains / a place is closed / time runs short — name the specific stop"]
 }
 
+BEFORE YOU RETURN — mandatory check: count the words in every "audioguide". If ANY is under 380 words, you are not done: expand each short one with more history, more people, more story, more of what to look at, until it is clearly past 380 words. Also confirm each reads as a spoken story, not a list of facts. Only when every audioguide passes both checks, return the JSON.
 All coordinates must be real and accurate. The first stop's coordinates must be consistent with the starting point described above. Write every human-readable string in ${
     LANG_NAME[language] ?? "English"
   }.`;

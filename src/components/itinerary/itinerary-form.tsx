@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -35,6 +35,10 @@ import {
 } from "@/lib/itinerary";
 import { locales, localeLabels, type Locale } from "@/i18n/config";
 import { reverseGeocode } from "@/lib/geocode";
+import {
+  ITINERARY_PACK_CREDITS,
+  itineraryPackPriceLabel,
+} from "@/lib/itinerary-pack";
 import type { TravelMode } from "@/lib/database.types";
 import { cn } from "@/lib/utils";
 
@@ -42,8 +46,10 @@ type Where = "curated" | "anywhere";
 
 export function ItineraryForm({
   cities,
+  credits = 0,
 }: {
   cities: { slug: string; name: string }[];
+  credits?: number;
 }) {
   const t = useTranslations("itinerary");
   const activeLocale = useLocale() as Locale;
@@ -52,6 +58,9 @@ export function ItineraryForm({
 
   const cityParam = params.get("city");
   const hasCities = cities.length > 0;
+
+  const [limitReached, setLimitReached] = useState(false);
+  const [buying, setBuying] = useState(false);
 
   const [where, setWhere] = useState<Where>(
     cityParam && hasCities ? "curated" : "anywhere",
@@ -86,10 +95,35 @@ export function ItineraryForm({
   const [language, setLanguage] = useState<Locale>(activeLocale);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    const c = params.get("credits");
+    if (c === "success") toast.success(t("creditsAdded"));
+    else if (c === "cancelled") toast.info(t("creditsCancelled"));
+    if (c) router.replace("/itinerary/generate");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function toggleInterest(id: InterestId) {
     setInterests((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
+  }
+
+  async function buyPack() {
+    setBuying(true);
+    try {
+      const res = await fetch("/api/itinerary/credits/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const { url } = (await res.json()) as { url?: string };
+      if (url) window.location.assign(url);
+      else throw new Error();
+    } catch {
+      setBuying(false);
+      toast.error(t("failed"));
+    }
   }
 
   function requestLocation() {
@@ -199,7 +233,8 @@ export function ItineraryForm({
 
       if (res.status === 402) {
         setLoading(false);
-        toast.error(t("dailyLimit"), { duration: 9000 });
+        setLimitReached(true);
+        toast.error(t("dailyLimit"), { duration: 7000 });
         return;
       }
       if (res.status === 422) {
@@ -514,7 +549,36 @@ export function ItineraryForm({
         <Sparkles className="size-4" />
         {t("generate")}
       </Button>
-      <p className="text-center text-xs text-text-muted">{t("generateHint")}</p>
+      <p className="text-center text-xs text-text-muted">
+        {t("generateHint")}
+        {credits > 0 && ` · ${t("creditsBalance", { count: credits })}`}
+      </p>
+
+      {limitReached && (
+        <div className="rounded-lg border border-primary/40 bg-primary/5 p-4 text-center">
+          <p className="text-sm font-medium text-text-primary">
+            {t("dailyLimit")}
+          </p>
+          <p className="mt-1 text-xs text-text-secondary">
+            {t("packPitch", { count: ITINERARY_PACK_CREDITS })}
+          </p>
+          <Button
+            onClick={buyPack}
+            disabled={buying}
+            className="mt-3 w-full"
+          >
+            {buying ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Sparkles className="size-4" />
+            )}
+            {t("buyPack", {
+              count: ITINERARY_PACK_CREDITS,
+              price: itineraryPackPriceLabel(),
+            })}
+          </Button>
+        </div>
+      )}
 
       {pickerOpen && (
         <LocationPicker

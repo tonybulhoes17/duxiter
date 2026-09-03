@@ -190,6 +190,18 @@ export type ItineraryCreditRow = {
   updated_at: string;
 };
 
+export type ItineraryCreditOrderRow = {
+  id: string;
+  user_id: string;
+  stripe_session_id: string | null;
+  stripe_payment_intent_id: string | null;
+  credits: number;
+  amount_brl: number | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type OfflineDownloadRow = {
   id: string;
   user_id: string;
@@ -277,6 +289,7 @@ export type Database = {
       ai_itineraries: Table<AiItineraryRow>;
       itinerary_audios: Table<ItineraryAudioRow>;
       itinerary_credits: Table<ItineraryCreditRow>;
+      itinerary_credit_orders: Table<ItineraryCreditOrderRow>;
       offline_downloads: Table<OfflineDownloadRow>;
       discount_codes: Table<DiscountCodeRow>;
       discount_code_uses: Table<DiscountCodeUseRow>;
@@ -294,6 +307,10 @@ export type Database = {
       is_admin: {
         Args: { uid?: string };
         Returns: boolean;
+      };
+      add_itinerary_credits: {
+        Args: { p_user: string; p_credits: number };
+        Returns: undefined;
       };
     };
     CompositeTypes: Record<string, never>;

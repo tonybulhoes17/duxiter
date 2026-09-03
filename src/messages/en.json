@@ -185,7 +185,16 @@
     "audioRetry": "retry",
     "dailyLimit": "You have used today’s free itinerary. Come back tomorrow to generate another.",
     "myItineraries": "My itineraries",
-    "myItinerariesEmpty": "Your AI itineraries show up here."
+    "myItinerariesEmpty": "Your AI itineraries show up here.",
+    "introTitle": "Introduction",
+    "walkTitle": "On the way to the next stop",
+    "playIntro": "Play intro",
+    "playWalk": "walking audio",
+    "creditsBalance": "{count} itinerary credits",
+    "creditsAdded": "Credits added — you can generate now.",
+    "creditsCancelled": "Purchase cancelled.",
+    "packPitch": "{count} extra itineraries with audio. They never expire.",
+    "buyPack": "Buy {count} itineraries — {price}"
   },
   "auth": {
     "loginTitle": "Welcome back",

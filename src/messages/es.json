@@ -185,7 +185,16 @@
     "audioRetry": "reintentar",
     "dailyLimit": "Ya usaste tu ruta gratis de hoy. Vuelve mañana para generar otra.",
     "myItineraries": "Mis rutas",
-    "myItinerariesEmpty": "Tus rutas con IA aparecen aquí."
+    "myItinerariesEmpty": "Tus rutas con IA aparecen aquí.",
+    "introTitle": "Introducción",
+    "walkTitle": "De camino a la siguiente parada",
+    "playIntro": "Escuchar introducción",
+    "playWalk": "audio a pie",
+    "creditsBalance": "{count} créditos de ruta",
+    "creditsAdded": "Créditos añadidos: ya puedes generar.",
+    "creditsCancelled": "Compra cancelada.",
+    "packPitch": "{count} rutas extra con audio. No caducan.",
+    "buyPack": "Comprar {count} rutas — {price}"
   },
   "auth": {
     "loginTitle": "Bienvenido de nuevo",

@@ -114,8 +114,55 @@ async function grantAccess(session: Stripe.Checkout.Session) {
   }
 }
 
+async function grantItineraryCredits(session: Stripe.Checkout.Session) {
+  const admin = createAdminClient();
+  const orderId = session.metadata?.orderId;
+  const q = orderId
+    ? admin.from("itinerary_credit_orders").select("*").eq("id", orderId)
+    : admin
+        .from("itinerary_credit_orders")
+        .select("*")
+        .eq("stripe_session_id", session.id);
+  const { data: order } = await q.maybeSingle();
+  if (!order) {
+    console.warn("webhook: no credit order for session", session.id);
+    return;
+  }
+  if (order.status === "completed") return; // idempotent
+
+  await admin
+    .from("itinerary_credit_orders")
+    .update({
+      status: "completed",
+      stripe_payment_intent_id:
+        typeof session.payment_intent === "string"
+          ? session.payment_intent
+          : (session.payment_intent?.id ?? null),
+      amount_brl: session.amount_total
+        ? session.amount_total / 100
+        : order.amount_brl,
+    })
+    .eq("id", order.id);
+
+  await admin.rpc("add_itinerary_credits", {
+    p_user: order.user_id,
+    p_credits: order.credits,
+  });
+}
+
 async function markFailed(session: Stripe.Checkout.Session, status: "expired") {
   const admin = createAdminClient();
+  if (session.metadata?.kind === "itinerary_credits") {
+    const orderId = session.metadata?.orderId;
+    const q = orderId
+      ? admin.from("itinerary_credit_orders").update({ status }).eq("id", orderId)
+      : admin
+          .from("itinerary_credit_orders")
+          .update({ status })
+          .eq("stripe_session_id", session.id);
+    await q.neq("status", "completed");
+    return;
+  }
   const purchaseId = session.metadata?.purchaseId;
   const q = purchaseId
     ? admin.from("purchases").update({ status }).eq("id", purchaseId)
@@ -163,11 +210,18 @@ export async function POST(req: NextRequest) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
         // Cards: paid immediately. PIX: still 'unpaid' here — wait for async event.
-        if (session.payment_status === "paid") await grantAccess(session);
+        if (session.payment_status === "paid") {
+          if (session.metadata?.kind === "itinerary_credits")
+            await grantItineraryCredits(session);
+          else await grantAccess(session);
+        }
         break;
       }
       case "checkout.session.async_payment_succeeded": {
-        await grantAccess(event.data.object as Stripe.Checkout.Session);
+        const session = event.data.object as Stripe.Checkout.Session;
+        if (session.metadata?.kind === "itinerary_credits")
+          await grantItineraryCredits(session);
+        else await grantAccess(session);
         break;
       }
       case "checkout.session.async_payment_failed":

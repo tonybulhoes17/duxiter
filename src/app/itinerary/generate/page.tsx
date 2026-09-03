@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 import { ItineraryForm } from "@/components/itinerary/itinerary-form";
 import { getSessionUser } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 import { getCities } from "@/lib/queries";
 import { getLocalizedText, type Locale } from "@/i18n/config";
 
@@ -18,7 +19,14 @@ export default async function ItineraryGeneratePage() {
 
   const locale = (await getLocale()) as Locale;
   const t = await getTranslations("itinerary");
-  const cities = await getCities();
+  const [cities, { data: credit }] = await Promise.all([
+    getCities(),
+    createClient()
+      .from("itinerary_credits")
+      .select("balance")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+  ]);
 
   const cityOptions = cities.map((c) => ({
     slug: c.slug,
@@ -33,7 +41,10 @@ export default async function ItineraryGeneratePage() {
       </div>
       <div className="mt-8">
         <Suspense>
-          <ItineraryForm cities={cityOptions} />
+          <ItineraryForm
+            cities={cityOptions}
+            credits={credit?.balance ?? 0}
+          />
         </Suspense>
       </div>
     </div>

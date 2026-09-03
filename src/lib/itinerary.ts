@@ -73,6 +73,7 @@ export interface RichItinerary {
     start_time?: string;
     end_time?: string;
   };
+  intro_narration?: string;
   route_overview?: string;
   stops: ItineraryStop[];
   practical_tips?: string[];
@@ -177,6 +178,8 @@ export function normalizeItinerary(raw: unknown): RichItinerary | null {
       start_time: str(summaryRaw.start_time) || undefined,
       end_time: str(summaryRaw.end_time) || undefined,
     },
+    intro_narration:
+      str(obj.intro_narration ?? obj.intro ?? obj.welcome) || undefined,
     route_overview: str(obj.route_overview) || undefined,
     stops,
     practical_tips: strArr(obj.practical_tips),

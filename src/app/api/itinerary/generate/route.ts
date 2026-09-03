@@ -209,12 +209,16 @@ export async function POST(req: NextRequest) {
         model: ITINERARY_MODEL,
         tools: [{ type: "web_search" }],
         input: prompt,
+        // rich audioguides for 5-7 stops need a lot of room, or the model
+        // shortens the prose to fit
+        max_output_tokens: 16000,
       });
       text = res.output_text ?? "";
     } else {
       const completion = await openai.chat.completions.create({
         model: ITINERARY_MODEL,
         temperature: 0.6,
+        max_tokens: 16000,
         response_format: { type: "json_object" },
         messages: [
           {

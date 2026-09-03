@@ -10,6 +10,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const BUCKET = "duxiter-public";
+const KINDS = new Set(["stop", "to_next", "intro"]);
 
 export async function POST(
   req: NextRequest,
@@ -28,8 +29,12 @@ export async function POST(
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const body = (await req.json().catch(() => ({}))) as { stop?: number };
-  const stopIndex = Number(body.stop);
+  const body = (await req.json().catch(() => ({}))) as {
+    stop?: number;
+    kind?: string;
+  };
+  const kind = KINDS.has(body.kind ?? "") ? (body.kind as string) : "stop";
+  const stopIndex = kind === "intro" ? 0 : Number(body.stop);
   if (!Number.isInteger(stopIndex) || stopIndex < 0) {
     return NextResponse.json({ error: "bad_stop" }, { status: 400 });
   }
@@ -46,26 +51,32 @@ export async function POST(
 
   const rich =
     normalizeItinerary(row.itinerary) ?? normalizeItinerary(row.generated_stops);
-  const stop = rich?.stops[stopIndex];
-  if (!rich || !stop) {
+  if (!rich) {
     return NextResponse.json({ error: "bad_stop" }, { status: 400 });
   }
-  const lang = isLocale(row.language) ? row.language : "en";
-  const text = stop.audioguide?.trim();
-  if (!text || text.length < 20) {
+  const stop = rich.stops[stopIndex];
+
+  let text: string | undefined;
+  if (kind === "intro") text = rich.intro_narration?.trim();
+  else if (kind === "to_next") text = stop?.to_next_stop?.trim();
+  else text = stop?.audioguide?.trim();
+
+  if ((kind !== "intro" && !stop) || !text || text.length < 15) {
     return NextResponse.json({ error: "no_text" }, { status: 422 });
   }
 
-  // already done?
+  const lang = isLocale(row.language) ? row.language : "en";
+
   const { data: existing } = await admin
     .from("itinerary_audios")
     .select("status, audio_url, duration_seconds")
     .eq("itinerary_id", id)
     .eq("stop_index", stopIndex)
-    .eq("kind", "stop")
+    .eq("kind", kind)
     .maybeSingle();
   if (existing?.status === "ready" && existing.audio_url) {
     return NextResponse.json({
+      kind,
       stopIndex,
       url: existing.audio_url,
       duration: existing.duration_seconds ?? null,
@@ -74,12 +85,7 @@ export async function POST(
   }
 
   await admin.from("itinerary_audios").upsert(
-    {
-      itinerary_id: id,
-      stop_index: stopIndex,
-      kind: "stop",
-      status: "pending",
-    },
+    { itinerary_id: id, stop_index: stopIndex, kind, status: "pending" },
     { onConflict: "itinerary_id,stop_index,kind" },
   );
 
@@ -87,7 +93,7 @@ export async function POST(
     const { mp3, voice, charCount, durationSeconds } =
       await synthesizeNarration(text, lang);
 
-    const path = `itinerary-audio/${id}/${stopIndex}.mp3`;
+    const path = `itinerary-audio/${id}/${kind}_${stopIndex}.mp3`;
     const { error: upErr } = await admin.storage
       .from(BUCKET)
       .upload(path, mp3, { contentType: "audio/mpeg", upsert: true });
@@ -109,9 +115,10 @@ export async function POST(
       })
       .eq("itinerary_id", id)
       .eq("stop_index", stopIndex)
-      .eq("kind", "stop");
+      .eq("kind", kind);
 
     return NextResponse.json({
+      kind,
       stopIndex,
       url,
       duration: durationSeconds,
@@ -120,13 +127,13 @@ export async function POST(
   } catch (err) {
     const detail =
       err instanceof Error ? err.message.slice(0, 300) : "unknown error";
-    console.error("itinerary audio failed", id, stopIndex, detail);
+    console.error("itinerary audio failed", id, kind, stopIndex, detail);
     await admin
       .from("itinerary_audios")
       .update({ status: "failed", error: detail })
       .eq("itinerary_id", id)
       .eq("stop_index", stopIndex)
-      .eq("kind", "stop");
+      .eq("kind", kind);
     return NextResponse.json(
       { error: "synthesis_failed", detail },
       { status: 502 },

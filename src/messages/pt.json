@@ -185,7 +185,16 @@
     "audioRetry": "tentar de novo",
     "dailyLimit": "Você já gerou seu roteiro grátis de hoje. Volte amanhã para gerar outro.",
     "myItineraries": "Meus roteiros",
-    "myItinerariesEmpty": "Seus roteiros de IA aparecem aqui."
+    "myItinerariesEmpty": "Seus roteiros de IA aparecem aqui.",
+    "introTitle": "Introdução",
+    "walkTitle": "A caminho da próxima parada",
+    "playIntro": "Ouvir introdução",
+    "playWalk": "ouvir a pé",
+    "creditsBalance": "{count} créditos de roteiro",
+    "creditsAdded": "Créditos adicionados — já pode gerar.",
+    "creditsCancelled": "Compra cancelada.",
+    "packPitch": "{count} roteiros extras com áudio. Não expiram.",
+    "buyPack": "Comprar {count} roteiros — {price}"
   },
   "auth": {
     "loginTitle": "Bem-vindo de volta",
