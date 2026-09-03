@@ -81,6 +81,7 @@ export function ItineraryPlayer({
   });
   const audiosRef = useRef(audios);
   audiosRef.current = audios;
+  const requestedRef = useRef<Set<number>>(new Set());
 
   const setStopAudio = useCallback((i: number, next: StopAudio) => {
     setAudios((prev) => ({ ...prev, [i]: next }));
@@ -93,7 +94,7 @@ export function ItineraryPlayer({
       .map((_, i) => i)
       .filter((i) => {
         const s = audiosRef.current[i]?.status;
-        return s !== "ready" && s !== "pending";
+        return s !== "ready" && s !== "pending" && !requestedRef.current.has(i);
       });
     let active = 0;
     let cursor = 0;
@@ -102,6 +103,7 @@ export function ItineraryPlayer({
       while (!cancelled && active < 2 && cursor < todo.length) {
         const i = todo[cursor++];
         active++;
+        requestedRef.current.add(i);
         setStopAudio(i, { status: "pending" });
         fetch(`/api/itinerary/${itineraryId}/audio`, {
           method: "POST",

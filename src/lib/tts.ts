@@ -3,13 +3,16 @@ import "server-only";
 import { createOpenAI } from "@/lib/openai";
 import type { Locale } from "@/i18n/config";
 
-export const TTS_MODEL = process.env.OPENAI_TTS_MODEL ?? "gpt-4o-mini-tts";
+// tts-1-hd: ~8s for a full stop, safely under the 60s serverless cap, good
+// narration quality. gpt-4o-mini-tts sounds a touch warmer but runs ~2.5x
+// slower — risky for long clips. Override with OPENAI_TTS_MODEL.
+export const TTS_MODEL = process.env.OPENAI_TTS_MODEL ?? "tts-1-hd";
 
 /** One curated voice per language (override any with OPENAI_TTS_VOICE). */
 const VOICE_BY_LANG: Record<Locale, string> = {
-  pt: process.env.OPENAI_TTS_VOICE_PT ?? "nova",
-  en: process.env.OPENAI_TTS_VOICE_EN ?? "sage",
-  es: process.env.OPENAI_TTS_VOICE_ES ?? "coral",
+  pt: process.env.OPENAI_TTS_VOICE_PT ?? "shimmer",
+  en: process.env.OPENAI_TTS_VOICE_EN ?? "shimmer",
+  es: process.env.OPENAI_TTS_VOICE_ES ?? "shimmer",
 };
 
 export function ttsVoiceFor(lang: Locale): string {
