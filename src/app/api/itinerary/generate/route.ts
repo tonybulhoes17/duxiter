@@ -80,11 +80,12 @@ export async function POST(req: NextRequest) {
 
   let consumeCredit = false;
   if ((todayCount ?? 0) >= 1) {
-    const { data: cred } = await supabase
+    const { data: cred, error: credErr } = await createAdminClient()
       .from("itinerary_credits")
       .select("balance")
       .eq("user_id", user.id)
       .maybeSingle();
+    if (credErr) console.error("credit read failed", credErr);
     if (!cred || cred.balance <= 0) {
       return NextResponse.json(
         { error: "daily_limit", creditsAvailable: false },
