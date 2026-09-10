@@ -8,7 +8,7 @@ import {
   extractJsonObject,
 } from "@/lib/openai";
 import { buildItineraryPrompt } from "@/lib/itinerary-prompt";
-import { expandAudioguides, avgAudioguideWords } from "@/lib/itinerary-expand";
+import { expandAudioguides, shouldExpand } from "@/lib/itinerary-expand";
 import {
   normalizeItinerary,
   TIME_OPTIONS,
@@ -261,9 +261,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "generation_failed" }, { status: 502 });
   }
 
-  // second pass: expand thin audioguides into full 400-550 word narration.
+  // second pass: rewrite thin audioguides up to their per-depth target length.
   // Focused per-stop rewrites hit the length target far better than pass 1.
-  if (avgAudioguideWords(itinerary) < 340) {
+  if (shouldExpand(itinerary)) {
     try {
       const expanded = await Promise.race([
         expandAudioguides(
@@ -272,7 +272,7 @@ export async function POST(req: NextRequest) {
           destination?.label || destination?.query || placeName,
         ),
         new Promise<RichItinerary>((_, rej) =>
-          setTimeout(() => rej(new Error("expand timeout")), 24000),
+          setTimeout(() => rej(new Error("expand timeout")), 28000),
         ),
       ]);
       itinerary = expanded;

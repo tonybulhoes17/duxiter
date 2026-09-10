@@ -45,6 +45,8 @@ export const TRAVEL_MODES: TravelMode[] = ["walking", "car"];
 
 /** ---- rich itinerary shape returned by the model ---- */
 
+export type StopDepth = "cornerstone" | "along_the_way";
+
 export interface ItineraryStop {
   title: string;
   why_chosen?: string;
@@ -55,6 +57,7 @@ export interface ItineraryStop {
   distance_from_previous_m?: number;
   travel_minutes_from_previous?: number;
   category: string;
+  depth: StopDepth;
   audioguide: string;
   dont_miss: string[];
   to_next_stop?: string;
@@ -120,6 +123,7 @@ function coerceStop(v: unknown): ItineraryStop | null {
         )
       : undefined,
     category: str(s.category) || "neighborhood",
+    depth: str(s.depth) === "along_the_way" ? "along_the_way" : "cornerstone",
     audioguide: str(s.audioguide ?? s.description ?? s.narrative),
     dont_miss: strArr(s.dont_miss),
     to_next_stop: str(s.to_next_stop ?? s.how_to_next) || undefined,

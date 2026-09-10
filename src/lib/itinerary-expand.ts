@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createOpenAI, ITINERARY_MODEL } from "@/lib/openai";
-import type { RichItinerary } from "@/lib/itinerary";
+import type { ItineraryStop, RichItinerary } from "@/lib/itinerary";
 import type { Locale } from "@/i18n/config";
 
 const LANG_NAME: Record<string, string> = {
@@ -16,23 +16,47 @@ export function wordCount(s: string | undefined): number {
   return (s ?? "").trim().split(/\s+/).filter(Boolean).length;
 }
 
-/** Average audioguide length — used to decide whether a second pass is worth it. */
+/** Target spoken length per stop depth. */
+function targetWords(stop: ItineraryStop): { min: number; max: number } {
+  return stop.depth === "along_the_way"
+    ? { min: 210, max: 320 }
+    : { min: 390, max: 520 };
+}
+
+/**
+ * A stop needs a second pass only if it's clearly under target. Cornerstones
+ * get expanded readily; "along-the-way" stops only if genuinely broken —
+ * a tight 180-word clip for a fountain you pass is exactly right.
+ */
+function needsExpansion(stop: ItineraryStop): boolean {
+  const w = wordCount(stop.audioguide);
+  return stop.depth === "along_the_way" ? w < 150 : w < 330;
+}
+
 export function avgAudioguideWords(itin: RichItinerary): number {
   if (!itin.stops.length) return 0;
-  const total = itin.stops.reduce((a, s) => a + wordCount(s.audioguide), 0);
-  return total / itin.stops.length;
+  return (
+    itin.stops.reduce((a, s) => a + wordCount(s.audioguide), 0) /
+    itin.stops.length
+  );
+}
+
+/** True when at least one stop is thin enough to be worth a rewrite. */
+export function shouldExpand(itin: RichItinerary): boolean {
+  return itin.stops.some(needsExpansion);
 }
 
 async function expandOne(
-  stop: RichItinerary["stops"][number],
+  stop: ItineraryStop,
   place: string,
   lang: Locale,
 ): Promise<string> {
   const openai = createOpenAI();
   const langName = LANG_NAME[lang] ?? "English";
+  const { min, max } = targetWords(stop);
   const prompt = `You are an outstanding audio tour guide speaking aloud to one traveller standing in front of this place.
 
-Rewrite the narration below into a richer, longer spoken guide of 400 to 550 words in ${langName}.
+Rewrite the narration below into a richer spoken guide of ${min} to ${max} words in ${langName}.
 Rules:
 - Do NOT invent new facts, dates, names or events. Keep every fact that is already there and stay faithful to it.
 - Make it richer by expanding AROUND the existing facts: more historical context and what was happening then, the human story and the people involved, what to physically look at right now (materials, carvings, colours, proportions, the view), the atmosphere, and smooth spoken transitions.
@@ -63,23 +87,29 @@ Return ONLY the expanded narration text — no preamble, no quotes, nothing else
     ],
   });
   const out = res.choices[0]?.message?.content?.trim() ?? "";
-  // keep the longer of the two, and never return something suspiciously short
-  return wordCount(out) > wordCount(stop.audioguide) + 40 ? out : stop.audioguide;
+  return wordCount(out) > wordCount(stop.audioguide) + 30 ? out : stop.audioguide;
 }
 
 /**
- * Second pass: rewrite each stop's audioguide into a fuller 400-550 word
- * narrative. Focused single-task calls hit the length target far more
- * reliably than asking pass 1 to write long. Runs all stops in parallel;
- * any failure keeps that stop's original text.
+ * Second pass: rewrite thin audioguides up to their target length. Focused
+ * single-task calls hit the length target far more reliably than asking pass 1
+ * to write long. Only the stops that need it are rewritten (keeps cost sane on
+ * routes with many small "along-the-way" stops). Failures keep the original.
  */
 export async function expandAudioguides(
   itin: RichItinerary,
   lang: Locale,
   place: string,
 ): Promise<RichItinerary> {
+  const todo = new Set(
+    itin.stops.flatMap((s, i) => (needsExpansion(s) ? [i] : [])),
+  );
+  if (todo.size === 0) return itin;
+
   const results = await Promise.allSettled(
-    itin.stops.map((s) => expandOne(s, place, lang)),
+    itin.stops.map((s, i) =>
+      todo.has(i) ? expandOne(s, place, lang) : Promise.resolve(s.audioguide),
+    ),
   );
   const stops = itin.stops.map((s, i) => {
     const r = results[i];
