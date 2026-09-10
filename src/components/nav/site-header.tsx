@@ -23,6 +23,7 @@ export async function SiteHeader() {
           <NavLink href="/cities">{t("cities")}</NavLink>
           <NavLink href="/identify">{t("identify")}</NavLink>
           <NavLink href="/itinerary/generate">{t("itinerary")}</NavLink>
+          <NavLink href="/trips">{t("trips")}</NavLink>
           {user?.isAdmin && <NavLink href="/admin">Admin</NavLink>}
         </nav>
 

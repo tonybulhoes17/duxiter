@@ -1,7 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
-import { BookmarkCheck, Download, Sparkles, Ticket } from "lucide-react";
+import {
+  BookmarkCheck,
+  ChevronRight,
+  Download,
+  Sparkles,
+  Ticket,
+  Users,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth";
 import { localeLabels, type Locale } from "@/i18n/config";
@@ -18,6 +25,7 @@ export default async function ProfilePage() {
   const locale = (await getLocale()) as Locale;
   const t = await getTranslations("tour");
   const ti = await getTranslations("itinerary");
+  const tt = await getTranslations("trip");
   const supabase = createClient();
 
   const [{ data: purchases }, { data: savedItinerariesData }] = await Promise.all([
@@ -102,6 +110,18 @@ export default async function ProfilePage() {
           Downloads
         </Link>
       </div>
+
+      <Link
+        href="/trips"
+        className="mt-8 flex items-center gap-3 rounded-lg border border-border bg-card p-4 hover:border-white/20"
+      >
+        <Users className="size-5 shrink-0 text-primary" />
+        <div className="min-w-0 flex-1">
+          <p className="font-heading font-semibold">{tt("title")}</p>
+          <p className="text-xs text-text-muted">{tt("subtitle")}</p>
+        </div>
+        <ChevronRight className="size-4 shrink-0 text-text-muted" />
+      </Link>
 
       <section className="mt-10">
         <h2 className="flex items-center gap-2 font-display text-xl font-bold">

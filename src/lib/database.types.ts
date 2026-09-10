@@ -202,6 +202,66 @@ export type ItineraryCreditOrderRow = {
   updated_at: string;
 };
 
+export type TripRow = {
+  id: string;
+  name: string;
+  emoji: string;
+  base_currency: string;
+  created_by: string | null;
+  invite_token: string;
+  report_token: string;
+  status: "active" | "closed";
+  closed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type TripMemberRow = {
+  id: string;
+  trip_id: string;
+  name: string;
+  user_id: string | null;
+  role: "owner" | "member";
+  secret: string;
+  claimed: boolean;
+  claimed_at: string | null;
+  created_at: string;
+};
+
+export type TripExpenseRow = {
+  id: string;
+  trip_id: string;
+  title: string;
+  emoji: string;
+  amount: number;
+  paid_by: string;
+  split_mode: "equal" | "exact";
+  spent_on: string;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type TripExpenseShareRow = {
+  id: string;
+  expense_id: string;
+  member_id: string;
+  share_amount: number;
+};
+
+export type TripSettlementRow = {
+  id: string;
+  trip_id: string;
+  from_member: string;
+  to_member: string;
+  amount: number;
+  settled_on: string;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
+};
+
 export type OfflineDownloadRow = {
   id: string;
   user_id: string;
@@ -290,6 +350,11 @@ export type Database = {
       itinerary_audios: Table<ItineraryAudioRow>;
       itinerary_credits: Table<ItineraryCreditRow>;
       itinerary_credit_orders: Table<ItineraryCreditOrderRow>;
+      trips: Table<TripRow>;
+      trip_members: Table<TripMemberRow>;
+      trip_expenses: Table<TripExpenseRow>;
+      trip_expense_shares: Table<TripExpenseShareRow>;
+      trip_settlements: Table<TripSettlementRow>;
       offline_downloads: Table<OfflineDownloadRow>;
       discount_codes: Table<DiscountCodeRow>;
       discount_code_uses: Table<DiscountCodeUseRow>;
