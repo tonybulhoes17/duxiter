@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Camera, Compass, Map, Sparkles, User } from "lucide-react";
+import { Compass, Map, Sparkles, User, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
   { href: "/cities", key: "cities", icon: Compass },
-  { href: "/identify", key: "identify", icon: Camera },
+  { href: "/trips", key: "trips", icon: Users },
   { href: "/itinerary/generate", key: "itinerary", icon: Sparkles },
   { href: "/profile", key: "profile", icon: User },
 ] as const;

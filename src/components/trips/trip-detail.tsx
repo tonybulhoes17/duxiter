@@ -84,7 +84,7 @@ export function TripDetail({
   }
 
   return (
-    <div className="mx-auto max-w-lg pb-24">
+    <div className="mx-auto min-h-dvh max-w-lg pb-12">
       <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-border bg-overlay px-4 py-3 backdrop-blur-lg safe-top">
         <Link
           href="/trips"
@@ -142,8 +142,14 @@ export function TripDetail({
 
       {tab === "expenses" ? (
         <div className="space-y-3 p-4">
+          {canEdit && (
+            <Button className="w-full" onClick={() => setDrawer({})}>
+              <Plus className="size-4" />
+              {t("addExpense")}
+            </Button>
+          )}
           {view.expenses.length === 0 ? (
-            <p className="py-10 text-center text-sm text-text-muted">
+            <p className="py-8 text-center text-sm text-text-muted">
               {t("noExpenses")}
             </p>
           ) : (
@@ -213,17 +219,6 @@ export function TripDetail({
         <div className="px-4 pt-3">
           <TripReport view={view} money={money} t={t} loc={loc} />
         </div>
-      )}
-
-      {/* FAB */}
-      {canEdit && (
-        <button
-          onClick={() => setDrawer({})}
-          className="fixed bottom-6 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-lg safe-bottom"
-        >
-          <Plus className="size-4" />
-          {t("addExpense")}
-        </button>
       )}
 
       {drawer && (

@@ -63,7 +63,10 @@ export default async function RootLayout({
   const user = await getSessionUser();
 
   const pathname = headers().get("x-pathname") ?? "";
-  const immersive = pathname.includes("/play") || pathname.startsWith("/admin");
+  const immersive =
+    pathname.includes("/play") ||
+    pathname.startsWith("/admin") ||
+    (pathname.startsWith("/trips/") && pathname !== "/trips/new");
 
   return (
     <html lang={locale} suppressHydrationWarning>

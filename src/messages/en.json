@@ -38,7 +38,10 @@
     "f2Title": "Museum guides",
     "f2Body": "Exhibits explained in an engaging way",
     "f3Title": "AI itineraries",
-    "f3Body": "Personalized routes for your style"
+    "f3Body": "Personalized routes for your style",
+    "tripsTitle": "Travelling with a group?",
+    "tripsBody": "Split the trip expenses and see who owes whom — the people you invite do not need an account.",
+    "tripsCta": "Split expenses"
   },
   "cities": {
     "title": "Cities",

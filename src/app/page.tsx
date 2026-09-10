@@ -8,6 +8,7 @@ import {
   Headphones,
   MapPin,
   Sparkles,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CityCard } from "@/components/discovery/city-card";
@@ -101,6 +102,27 @@ export default async function LandingPage() {
               {t("scanCta")}
             </Link>
           </div>
+        </div>
+      </section>
+
+      {/* Split trip expenses */}
+      <section className="container -mt-8 pb-4">
+        <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-6 sm:flex-row sm:items-center">
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+            <Users className="size-6" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="font-heading text-lg font-semibold">
+              {t("tripsTitle")}
+            </h2>
+            <p className="mt-1 text-sm text-text-secondary">{t("tripsBody")}</p>
+          </div>
+          <Button asChild className="shrink-0">
+            <Link href="/trips">
+              <Users className="size-4" />
+              {t("tripsCta")}
+            </Link>
+          </Button>
         </div>
       </section>
 
