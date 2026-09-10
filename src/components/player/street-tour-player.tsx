@@ -3,7 +3,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { ArrowLeft, ChevronDown, ChevronUp, Loader2, MapPin } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  Pause,
+  Play,
+} from "lucide-react";
 import { AudioPlayer } from "@/components/player/audio-player";
 import { StopImageCarousel } from "@/components/player/stop-image-carousel";
 import { PaywallOverlay } from "@/components/player/paywall-overlay";
@@ -66,6 +74,8 @@ export function StreetTourPlayer({
   const [expanded, setExpanded] = useState(true);
   const jumpedRef = useRef(false);
   const completedRef = useRef(false);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const stripRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -134,13 +144,29 @@ export function StreetTourPlayer({
     if (!data) return;
     const clamped = Math.min(Math.max(0, next), data.stops.length - 1);
     setIdx(clamped);
-    setExpanded(true);
     if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-      navigator.vibrate?.(25);
+      navigator.vibrate?.(20);
     }
+    stripRef.current
+      ?.querySelector<HTMLElement>(`[data-chip="${clamped}"]`)
+      ?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
     if (clamped === data.stops.length - 1 && !completedRef.current) {
       completedRef.current = true;
       track("tour_complete", { tour_id: tourId });
+    }
+  }
+
+  function onTouchStart(e: React.TouchEvent) {
+    touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }
+  function onTouchEnd(e: React.TouchEvent) {
+    const s = touchStart.current;
+    touchStart.current = null;
+    if (!s) return;
+    const dx = e.changedTouches[0].clientX - s.x;
+    const dy = e.changedTouches[0].clientY - s.y;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.8) {
+      goTo(idx + (dx < 0 ? 1 : -1));
     }
   }
 
@@ -182,35 +208,115 @@ export function StreetTourPlayer({
         >
           <ArrowLeft className="size-5" />
         </Link>
-        <span className="rounded-full bg-overlay px-3 py-2 font-metric text-xs text-text-primary backdrop-blur">
-          {t("stopN", { n: idx + 1, total: data.total })}
+        <span className="truncate rounded-full bg-overlay px-3 py-2 font-metric text-xs text-text-primary backdrop-blur">
+          {tourTitle}
         </span>
       </div>
 
       {/* Bottom sheet */}
-      <div className="absolute inset-x-0 bottom-0 rounded-t-2xl border-t border-border bg-card shadow-2xl safe-bottom">
+      <div
+        className="absolute inset-x-0 bottom-0 rounded-t-2xl border-t border-border bg-card shadow-2xl safe-bottom"
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="flex w-full items-center gap-3 px-4 pt-3"
+          className="flex w-full justify-center pt-2.5"
+          aria-label={expanded ? "Collapse" : "Expand"}
         >
-          <span className="mx-auto h-1 w-10 rounded-full bg-subtle" />
+          <span className="h-1 w-10 rounded-full bg-subtle" />
         </button>
 
-        <div className="flex items-start gap-3 px-4 pb-2">
-          <div className="min-w-0 flex-1">
-            <p className="font-metric text-xs text-text-muted">
+        {/* Stop strip — tap a number to jump, swipe the sheet to move */}
+        <div
+          ref={stripRef}
+          className="flex gap-2 overflow-x-auto px-3 pt-2.5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {data.stops.map((s, i) => {
+            const done = i < idx;
+            const active = i === idx;
+            return (
+              <button
+                key={s.id}
+                data-chip={i}
+                onClick={() => goTo(i)}
+                className={
+                  active
+                    ? "flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground"
+                    : done
+                      ? "flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/25 text-xs font-semibold text-text-primary"
+                      : "flex size-8 shrink-0 items-center justify-center rounded-full bg-subtle text-xs font-semibold text-text-secondary"
+                }
+                aria-label={t("stopN", { n: i + 1, total: data.total })}
+              >
+                {done && !active ? <Check className="size-3.5" /> : i + 1}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex items-center gap-2 px-3 py-2">
+          <button
+            type="button"
+            onClick={() => goTo(idx - 1)}
+            disabled={idx === 0}
+            aria-label={tc("back")}
+            className="flex size-10 shrink-0 items-center justify-center rounded-full text-text-secondary hover:bg-subtle disabled:opacity-30"
+          >
+            <ChevronDown className="size-5 rotate-90" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="min-w-0 flex-1 text-left"
+          >
+            <p className="font-metric text-[11px] text-text-muted">
               {t("stopN", { n: idx + 1, total: data.total })}
             </p>
-            <h2 className="font-display text-lg font-bold leading-tight">
+            <h2 className="truncate font-display text-base font-bold leading-tight">
               {title}
             </h2>
-          </div>
+          </button>
+
+          {!expanded && !stop.locked && segments.get(stop.id) && (
+            <button
+              type="button"
+              onClick={() => {
+                const start = segments.get(stop.id)!.startIndex;
+                if (audio.queueKey === tourId && audio.index === start)
+                  audio.toggle();
+                else audio.playQueue(audioQueue, start);
+              }}
+              aria-label="Play"
+              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"
+            >
+              {audio.queueKey === tourId &&
+              audio.index === segments.get(stop.id)!.startIndex &&
+              audio.playing ? (
+                <Pause className="size-5" />
+              ) : (
+                <Play className="size-5 translate-x-px" />
+              )}
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => goTo(idx + 1)}
+            disabled={idx >= data.stops.length - 1}
+            aria-label={tc("next")}
+            className="flex size-10 shrink-0 items-center justify-center rounded-full text-text-secondary hover:bg-subtle disabled:opacity-30"
+          >
+            <ChevronDown className="size-5 -rotate-90" />
+          </button>
+
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
             aria-label={expanded ? "Collapse" : "Expand"}
-            className="flex size-8 items-center justify-center rounded-md text-text-secondary hover:bg-subtle"
+            className="flex size-8 shrink-0 items-center justify-center rounded-md text-text-secondary hover:bg-subtle"
           >
             {expanded ? (
               <ChevronDown className="size-5" />
@@ -221,7 +327,7 @@ export function StreetTourPlayer({
         </div>
 
         {expanded && (
-          <div className="max-h-[52vh] space-y-3 overflow-y-auto px-4 pb-4">
+          <div className="max-h-[46vh] space-y-3 overflow-y-auto border-t border-border px-4 py-3">
             {stop.locked ? (
               <PaywallOverlay
                 tourId={tourId}
@@ -244,12 +350,6 @@ export function StreetTourPlayer({
                     {getLocalizedText(stop.description, locale)}
                   </p>
                 )}
-                {stop.latitude != null && (
-                  <p className="flex items-center gap-1.5 font-metric text-xs text-text-muted">
-                    <MapPin className="size-3.5" />
-                    {stop.latitude.toFixed(5)}, {stop.longitude?.toFixed(5)}
-                  </p>
-                )}
                 {segments.get(stop.id) ? (
                   <AudioPlayer
                     queue={audioQueue}
@@ -261,28 +361,16 @@ export function StreetTourPlayer({
                     🎵 {t("audioSoon")}
                   </p>
                 )}
+                {idx < data.stops.length - 1 && (
+                  <Button className="w-full" onClick={() => goTo(idx + 1)}>
+                    {tc("next")}:{" "}
+                    {getLocalizedText(data.stops[idx + 1].title, locale)} →
+                  </Button>
+                )}
               </>
             )}
           </div>
         )}
-
-        <div className="flex gap-2 border-t border-border p-4">
-          <Button
-            variant="outline"
-            onClick={() => goTo(idx - 1)}
-            disabled={idx === 0}
-            className="flex-1"
-          >
-            {tc("back")}
-          </Button>
-          <Button
-            onClick={() => goTo(idx + 1)}
-            disabled={idx >= data.stops.length - 1}
-            className="flex-1"
-          >
-            {tc("next")} →
-          </Button>
-        </div>
       </div>
     </div>
   );

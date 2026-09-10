@@ -378,6 +378,7 @@ export function ItineraryPlayer({
           activeIndex={idx}
           onSelectStop={setIdx}
           followUser={false}
+          mode="overview"
         />
         <Link
           href="/itinerary/generate"
