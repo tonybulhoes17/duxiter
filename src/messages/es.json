@@ -365,6 +365,10 @@
     "cancel": "Cancelar",
     "share": "Compartir",
     "loading": "Cargando…",
-    "failed": "Algo salió mal."
+    "failed": "Algo salió mal.",
+    "tabSummary": "Resumen",
+    "settlePhrase": "{from} le paga {amount} a {to}",
+    "shareSummary": "Compartir resumen",
+    "openSummary": "Ver resumen del viaje"
   }
 }

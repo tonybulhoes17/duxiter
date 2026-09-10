@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
   ArrowLeft,
+  ArrowRight,
   Check,
   ChevronRight,
   Lock,
@@ -20,7 +21,7 @@ import { formatMoney, formatDate, intlLocale } from "@/lib/trips/format";
 import type { TripView } from "@/lib/trips/types";
 import { ExpenseDrawer } from "@/components/trips/expense-drawer";
 
-type Tab = "expenses" | "balances";
+type Tab = "expenses" | "balances" | "summary";
 
 export function TripDetail({
   initial,
@@ -83,6 +84,41 @@ export function TripDetail({
     }
   }
 
+  async function shareSummary() {
+    const lines = [
+      `${view.emoji} ${view.name}`,
+      `${t("reportTotal")}: ${money(view.totalSpent)}`,
+    ];
+    if (view.suggested.length) {
+      lines.push("", `${t("reportFinalSettle")}:`);
+      for (const s of view.suggested) {
+        lines.push(
+          `• ${t("settlePhrase", {
+            from: s.fromName,
+            amount: money(s.amount),
+            to: s.toName,
+          })}`,
+        );
+      }
+    }
+    const text = lines.join("\n");
+    try {
+      if (navigator.share) await navigator.share({ text });
+      else {
+        await navigator.clipboard.writeText(text);
+        toast.success(t("inviteCopied"));
+      }
+    } catch {
+      /* cancelled */
+    }
+  }
+
+  async function closeTrip() {
+    if (!confirm(t("closeConfirm"))) return;
+    const next = await call(`/api/trips/${view.id}/close`, "POST", {});
+    if (next) setTab("summary");
+  }
+
   return (
     <div className="mx-auto min-h-dvh max-w-lg pb-12">
       <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-border bg-overlay px-4 py-3 backdrop-blur-lg safe-top">
@@ -125,7 +161,7 @@ export function TripDetail({
 
       {/* tabs */}
       <div className="flex gap-1 border-b border-border px-4">
-        {(["expenses", "balances"] as Tab[]).map((x) => (
+        {(["expenses", "balances", "summary"] as Tab[]).map((x) => (
           <button
             key={x}
             onClick={() => setTab(x)}
@@ -135,12 +171,24 @@ export function TripDetail({
                 : "border-transparent text-text-muted"
             }`}
           >
-            {x === "expenses" ? t("tabExpenses") : t("tabBalances")}
+            {x === "expenses"
+              ? t("tabExpenses")
+              : x === "balances"
+                ? t("tabBalances")
+                : t("tabSummary")}
           </button>
         ))}
       </div>
 
-      {tab === "expenses" ? (
+      {tab === "summary" ? (
+        <div className="space-y-3 p-4">
+          <TripReport view={view} money={money} t={t} loc={loc} />
+          <Button variant="outline" className="w-full" onClick={shareSummary}>
+            <Share2 className="size-4" />
+            {t("shareSummary")}
+          </Button>
+        </div>
+      ) : tab === "expenses" ? (
         <div className="space-y-3 p-4">
           {canEdit && (
             <Button className="w-full" onClick={() => setDrawer({})}>
@@ -200,24 +248,16 @@ export function TripDetail({
         />
       )}
 
-      {/* owner: close / report */}
-      {view.isOwner && view.status === "active" && (
+      {/* owner: close the books (from the balances tab) */}
+      {view.isOwner && view.status === "active" && tab === "balances" && (
         <div className="px-4 pt-2">
           <button
-            onClick={() => {
-              if (confirm(t("closeConfirm")))
-                call(`/api/trips/${view.id}/close`, "POST", {});
-            }}
+            onClick={closeTrip}
             className="flex w-full items-center justify-center gap-2 rounded-md border border-border py-2.5 text-sm text-text-secondary hover:border-white/20"
           >
             <Lock className="size-4" />
             {t("closeTrip")}
           </button>
-        </div>
-      )}
-      {view.status === "closed" && (
-        <div className="px-4 pt-3">
-          <TripReport view={view} money={money} t={t} loc={loc} />
         </div>
       )}
 
@@ -297,27 +337,23 @@ function BalancesTab({
             {view.suggested.map((s, i) => (
               <div
                 key={i}
-                className="flex items-center gap-2 rounded-lg border border-border bg-card p-3"
+                className="rounded-lg border border-border bg-card p-3"
               >
-                <p className="min-w-0 flex-1 text-sm">
-                  <span className="font-medium">{s.fromName}</span>{" "}
-                  <span className="text-text-muted">→</span>{" "}
-                  <span className="font-medium">{s.toName}</span>
-                  <span className="ml-2 font-metric font-semibold">
-                    {money(s.amount)}
-                  </span>
+                <p className="text-sm leading-snug text-text-primary">
+                  {t("settlePhrase", {
+                    from: s.fromName,
+                    amount: money(s.amount),
+                    to: s.toName,
+                  })}
                 </p>
                 {view.canEdit && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      onSettle(s.fromMember, s.toMember, s.amount)
-                    }
+                  <button
+                    onClick={() => onSettle(s.fromMember, s.toMember, s.amount)}
+                    className="mt-1.5 inline-flex items-center gap-1 text-xs text-text-muted hover:text-primary"
                   >
                     <Check className="size-3.5" />
                     {t("markPaid")}
-                  </Button>
+                  </button>
                 )}
               </div>
             ))}
@@ -379,16 +415,18 @@ function BalancesTab({
                 key={s.id}
                 className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm"
               >
-                <span className="min-w-0 flex-1 truncate">
-                  {s.fromName} → {s.toName}{" "}
-                  <span className="font-metric font-semibold">
-                    {money(s.amount)}
-                  </span>
+                <span className="min-w-0 flex-1">
+                  <Check className="mr-1 inline size-3 text-success" />
+                  {t("settlePhrase", {
+                    from: s.fromName,
+                    amount: money(s.amount),
+                    to: s.toName,
+                  })}
                 </span>
                 {view.canEdit && (
                   <button
                     onClick={() => onUndoSettle(s.id)}
-                    className="text-text-muted hover:text-text-secondary"
+                    className="shrink-0 text-text-muted hover:text-text-secondary"
                     aria-label={t("undo")}
                   >
                     <RotateCcw className="size-3.5" />
@@ -459,13 +497,15 @@ function TripReport({
           <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-text-muted">
             {t("reportFinalSettle")}
           </p>
-          <ul className="mt-1 space-y-0.5 text-sm">
+          <ul className="mt-1 space-y-1 text-sm">
             {view.suggested.map((s, i) => (
-              <li key={i}>
-                {s.fromName} → {s.toName}:{" "}
-                <span className="font-metric font-semibold">
-                  {money(s.amount)}
-                </span>
+              <li key={i} className="flex gap-1.5">
+                <ArrowRight className="mt-0.5 size-3.5 shrink-0 text-text-muted" />
+                {t("settlePhrase", {
+                  from: s.fromName,
+                  amount: money(s.amount),
+                  to: s.toName,
+                })}
               </li>
             ))}
           </ul>

@@ -365,6 +365,10 @@
     "cancel": "Cancel",
     "share": "Share",
     "loading": "Loading…",
-    "failed": "Something went wrong."
+    "failed": "Something went wrong.",
+    "tabSummary": "Summary",
+    "settlePhrase": "{from} pays {amount} to {to}",
+    "shareSummary": "Share summary",
+    "openSummary": "View trip summary"
   }
 }

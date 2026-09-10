@@ -365,6 +365,10 @@
     "cancel": "Cancelar",
     "share": "Compartilhar",
     "loading": "Carregando…",
-    "failed": "Algo deu errado."
+    "failed": "Algo deu errado.",
+    "tabSummary": "Resumo",
+    "settlePhrase": "{from} repassa {amount} para {to}",
+    "shareSummary": "Compartilhar resumo",
+    "openSummary": "Ver resumo da viagem"
   }
 }
