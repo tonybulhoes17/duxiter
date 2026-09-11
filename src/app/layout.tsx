@@ -6,6 +6,7 @@ import { Providers } from "@/components/providers";
 import { AudioProvider } from "@/components/audio/audio-provider";
 import { PlayerBar } from "@/components/audio/player-bar";
 import { SiteHeader } from "@/components/nav/site-header";
+import { SiteFooter } from "@/components/nav/site-footer";
 import { MobileNav } from "@/components/nav/mobile-nav";
 import { getSessionUser } from "@/lib/auth";
 import "./globals.css";
@@ -82,6 +83,7 @@ export default async function RootLayout({
                 <SiteHeader />
                 <main className="min-h-[calc(100dvh-4rem)] pb-20 md:pb-0">
                   {children}
+                  <SiteFooter />
                 </main>
                 <MobileNav authed={!!user} />
               </>

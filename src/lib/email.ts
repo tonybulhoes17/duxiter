@@ -74,6 +74,46 @@ export async function sendPurchaseConfirmation(opts: {
   }
 }
 
+const CONTACT_TO = process.env.CONTACT_EMAIL_TO ?? "tonybulhoes17@gmail.com";
+
+export async function sendContactMessage(opts: {
+  name: string;
+  email: string;
+  message: string;
+  locale?: "pt" | "en" | "es";
+}) {
+  if (!KEY) return { ok: false, reason: "email_not_configured" as const };
+
+  const html = `<!doctype html><html><body style="margin:0;background:#0f0f18;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#f4f4fa">
+  <div style="max-width:520px;margin:0 auto;padding:32px 24px">
+    <div style="font-weight:800;font-size:20px;letter-spacing:-.02em;color:#fff">Duxiter</div>
+    <h1 style="font-size:18px;margin:24px 0 4px">Nova mensagem do formul&aacute;rio &ldquo;Fale conosco&rdquo;</h1>
+    <p style="color:#a0a0b8;font-size:13px;margin:0 0 20px">Idioma da p&aacute;gina: ${escapeHtml(
+      opts.locale ?? "pt",
+    )}</p>
+    <p style="margin:0 0 4px"><strong>Nome:</strong> ${escapeHtml(opts.name)}</p>
+    <p style="margin:0 0 16px"><strong>E-mail:</strong> ${escapeHtml(opts.email)}</p>
+    <p style="white-space:pre-line;line-height:1.6;border-top:1px solid #2a2a3a;padding-top:16px">${escapeHtml(
+      opts.message,
+    )}</p>
+  </div></body></html>`;
+
+  try {
+    const resend = new Resend(KEY);
+    await resend.emails.send({
+      from: FROM,
+      to: CONTACT_TO,
+      replyTo: opts.email,
+      subject: `Fale conosco — ${opts.name}`,
+      html,
+    });
+    return { ok: true as const };
+  } catch (err) {
+    console.error("contact email failed", err);
+    return { ok: false, reason: "send_failed" as const };
+  }
+}
+
 function escapeHtml(s: string) {
   return s.replace(
     /[&<>"']/g,

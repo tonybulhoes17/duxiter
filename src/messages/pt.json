@@ -19,7 +19,7 @@
     "heroTitle": "Sua cidade, narrada.",
     "heroSubtitle": "Passeios a pé com áudio guiado por GPS, guias de museu e roteiros com IA para viajantes independentes. Sem usar as mãos, no seu idioma.",
     "heroCtaExplore": "Explorar cidades",
-    "heroCtaItinerary": "Criar roteiro com IA",
+    "heroCtaItinerary": "Criar passeio com IA",
     "howItWorks": "Como funciona",
     "step1Title": "Escolha uma cidade",
     "step1Body": "Navegue por cidades selecionadas e escolha um passeio para o seu tempo e humor.",
@@ -41,7 +41,8 @@
     "f3Body": "Itinerários personalizados para o seu estilo",
     "tripsTitle": "Viajando em grupo?",
     "tripsBody": "Divida as despesas da viagem e veja quem deve a quem — quem você convida não precisa criar conta.",
-    "tripsCta": "Dividir despesas"
+    "tripsCta": "Dividir despesas",
+    "heroCtaTrips": "Calculadora de despesas em grupo"
   },
   "cities": {
     "title": "Cidades",
@@ -370,5 +371,22 @@
     "settlePhrase": "{from} repassa {amount} para {to}",
     "shareSummary": "Compartilhar resumo",
     "openSummary": "Ver resumo da viagem"
+  },
+  "footer": {
+    "rights": "© Duxiter. Todos os direitos reservados."
+  },
+  "contact": {
+    "cta": "Fale conosco",
+    "title": "Fale conosco",
+    "subtitle": "Tem uma dúvida, sugestão ou encontrou um problema? Escreva pra gente.",
+    "name": "Seu nome",
+    "email": "Seu e-mail",
+    "message": "Mensagem",
+    "messagePlaceholder": "Conte o que você precisa...",
+    "send": "Enviar mensagem",
+    "successTitle": "Mensagem enviada!",
+    "successBody": "Recebemos sua mensagem e vamos responder no seu e-mail em breve.",
+    "close": "Fechar",
+    "errorBody": "Não conseguimos enviar agora. Tente novamente em instantes."
   }
 }

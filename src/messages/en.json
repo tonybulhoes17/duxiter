@@ -41,7 +41,8 @@
     "f3Body": "Personalized routes for your style",
     "tripsTitle": "Travelling with a group?",
     "tripsBody": "Split the trip expenses and see who owes whom — the people you invite do not need an account.",
-    "tripsCta": "Split expenses"
+    "tripsCta": "Split expenses",
+    "heroCtaTrips": "Group expense calculator"
   },
   "cities": {
     "title": "Cities",
@@ -370,5 +371,22 @@
     "settlePhrase": "{from} pays {amount} to {to}",
     "shareSummary": "Share summary",
     "openSummary": "View trip summary"
+  },
+  "footer": {
+    "rights": "© Duxiter. All rights reserved."
+  },
+  "contact": {
+    "cta": "Contact us",
+    "title": "Contact us",
+    "subtitle": "Have a question, suggestion, or found an issue? Write to us.",
+    "name": "Your name",
+    "email": "Your email",
+    "message": "Message",
+    "messagePlaceholder": "Tell us what you need...",
+    "send": "Send message",
+    "successTitle": "Message sent!",
+    "successBody": "We received your message and will reply to your email soon.",
+    "close": "Close",
+    "errorBody": "We couldn't send it right now. Please try again in a moment."
   }
 }

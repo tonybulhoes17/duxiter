@@ -41,7 +41,8 @@
     "f3Body": "Rutas personalizadas para tu estilo",
     "tripsTitle": "¿Viajas en grupo?",
     "tripsBody": "Divide los gastos del viaje y mira quién le debe a quién — las personas que invitas no necesitan cuenta.",
-    "tripsCta": "Dividir gastos"
+    "tripsCta": "Dividir gastos",
+    "heroCtaTrips": "Calculadora de gastos en grupo"
   },
   "cities": {
     "title": "Ciudades",
@@ -370,5 +371,22 @@
     "settlePhrase": "{from} le paga {amount} a {to}",
     "shareSummary": "Compartir resumen",
     "openSummary": "Ver resumen del viaje"
+  },
+  "footer": {
+    "rights": "© Duxiter. Todos los derechos reservados."
+  },
+  "contact": {
+    "cta": "Contáctanos",
+    "title": "Contáctanos",
+    "subtitle": "¿Tienes una duda, sugerencia o encontraste un problema? Escríbenos.",
+    "name": "Tu nombre",
+    "email": "Tu correo",
+    "message": "Mensaje",
+    "messagePlaceholder": "Cuéntanos qué necesitas...",
+    "send": "Enviar mensaje",
+    "successTitle": "¡Mensaje enviado!",
+    "successBody": "Recibimos tu mensaje y responderemos a tu correo pronto.",
+    "close": "Cerrar",
+    "errorBody": "No pudimos enviarlo ahora. Inténtalo de nuevo en un momento."
   }
 }

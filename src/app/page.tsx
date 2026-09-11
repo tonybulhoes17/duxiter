@@ -77,7 +77,7 @@ export default async function LandingPage() {
               ))}
             </ul>
 
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-8 flex flex-col flex-wrap gap-3 sm:flex-row">
               <Button asChild size="lg">
                 <Link href="/cities">
                   {t("heroCtaExplore")}
@@ -91,6 +91,17 @@ export default async function LandingPage() {
                 className="border-white/25 bg-white/5 text-white hover:bg-white/10"
               >
                 <Link href="/itinerary/generate">{t("heroCtaItinerary")}</Link>
+              </Button>
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="border-white/25 bg-white/5 text-white hover:bg-white/10"
+              >
+                <Link href="/trips">
+                  <Users className="size-4" />
+                  {t("heroCtaTrips")}
+                </Link>
               </Button>
             </div>
 
