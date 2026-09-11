@@ -19,9 +19,9 @@ import {
   Navigation,
   Pause,
   Play,
+  MessageCircle,
   RefreshCw,
   Route as RouteIcon,
-  Share2,
   Umbrella,
 } from "lucide-react";
 import { MapView, type MapStop } from "@/components/player/map-view";
@@ -252,17 +252,14 @@ export function ItineraryPlayer({
     }
   }
 
-  async function share() {
+  function shareOnWhatsapp() {
     const url = `${publicEnv.appUrl}/itinerary/${itineraryId}`;
-    try {
-      if (navigator.share) await navigator.share({ title: cityName, url });
-      else {
-        await navigator.clipboard.writeText(url);
-        toast.success(t("linkCopied"));
-      }
-    } catch {
-      /* cancelled */
-    }
+    const message = t("shareText", { city: cityName, link: url });
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(message)}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
   }
 
   function goTo(next: number) {
@@ -442,9 +439,9 @@ export function ItineraryPlayer({
             )}
             {saved ? t("saved") : t("save")}
           </Button>
-          <Button variant="outline" onClick={share}>
-            <Share2 className="size-4" />
-            {t("share")}
+          <Button variant="outline" onClick={shareOnWhatsapp}>
+            <MessageCircle className="size-4" />
+            {t("shareWhatsapp")}
           </Button>
         </div>
         {readyStopCount > 0 && readyStopCount < stops.length && (

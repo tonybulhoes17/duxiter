@@ -96,7 +96,9 @@
     "editReview": "Edit review",
     "reviewPlaceholder": "How was the tour? (optional)",
     "submitReview": "Submit",
-    "cancelReview": "Cancel"
+    "cancelReview": "Cancel",
+    "shareWhatsapp": "Share on WhatsApp",
+    "shareText": "🎧 {title} — I found this tour on Duxiter!\n{link}"
   },
   "itinerary": {
     "title": "AI itinerary builder",
@@ -199,7 +201,9 @@
     "creditsAdded": "Credits added — you can generate now.",
     "creditsCancelled": "Purchase cancelled.",
     "packPitch": "{count} extra itineraries with audio. They never expire.",
-    "buyPack": "Buy {count} itineraries — {price}"
+    "buyPack": "Buy {count} itineraries — {price}",
+    "shareWhatsapp": "Share on WhatsApp",
+    "shareText": "🧭 AI-made itinerary for {city} on Duxiter!\n{link}"
   },
   "auth": {
     "loginTitle": "Welcome back",

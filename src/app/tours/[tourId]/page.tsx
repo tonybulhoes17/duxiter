@@ -11,21 +11,26 @@ import {
   Landmark,
   Lock,
   MapPin,
+  MessageCircle,
   Route,
   SignalHigh,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import { StarRating } from "@/components/discovery/star-rating";
 import { ReviewsSection } from "@/components/discovery/reviews-section";
 import { TourCta } from "@/components/discovery/tour-cta";
+import { WhatsappShareButton } from "@/components/discovery/whatsapp-share-button";
 import { CheckoutResult } from "@/components/checkout/checkout-result";
 import { TrackView } from "@/components/analytics/track";
 import { getTourDetail } from "@/lib/queries";
 import { getTourAccess } from "@/lib/access";
 import { getSessionUser } from "@/lib/auth";
 import { freeStopsCount, formatPrice } from "@/lib/format";
+import { publicEnv } from "@/lib/env";
 import { getLocalizedText, type Locale } from "@/i18n/config";
 import { isUuid } from "@/lib/validate";
+import { cn } from "@/lib/utils";
 
 interface Props {
   params: { tourId: string };
@@ -62,6 +67,8 @@ export default async function TourPage({ params }: Props) {
   const locking = !isFree && (access === "locked" || access === "expired");
 
   const difficultyLabel = t(tour.difficulty);
+  const shareUrl = `${publicEnv.appUrl}/tours/${tour.id}`;
+  const shareMessage = t("shareText", { title, link: shareUrl });
 
   return (
     <div className="pb-16">
@@ -95,6 +102,14 @@ export default async function TourPage({ params }: Props) {
             {getLocalizedText(tour.city.name, locale)}
           </Link>
         )}
+
+        <WhatsappShareButton
+          message={shareMessage}
+          aria-label={t("shareWhatsapp")}
+          className="absolute right-4 top-4 z-10 flex size-10 items-center justify-center rounded-full bg-overlay text-white backdrop-blur safe-top hover:bg-black/60"
+        >
+          <MessageCircle className="size-4" />
+        </WhatsappShareButton>
 
         <div className="container relative flex h-full flex-col justify-end pb-6">
           {tour.city && (
@@ -237,6 +252,13 @@ export default async function TourPage({ params }: Props) {
                 {t("previewNote", { count: freeCount, price: priceLabel })}
               </p>
             )}
+            <WhatsappShareButton
+              message={shareMessage}
+              className={cn(buttonVariants({ variant: "outline" }), "mt-3 w-full")}
+            >
+              <MessageCircle className="size-4" />
+              {t("shareWhatsapp")}
+            </WhatsappShareButton>
           </div>
         </aside>
       </div>

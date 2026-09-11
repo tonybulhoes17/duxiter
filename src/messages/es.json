@@ -96,7 +96,9 @@
     "editReview": "Editar reseña",
     "reviewPlaceholder": "¿Qué tal el tour? (opcional)",
     "submitReview": "Enviar",
-    "cancelReview": "Cancelar"
+    "cancelReview": "Cancelar",
+    "shareWhatsapp": "Compartir por WhatsApp",
+    "shareText": "🎧 {title} — ¡encontré este tour en Duxiter!\n{link}"
   },
   "itinerary": {
     "title": "Itinerario con IA",
@@ -199,7 +201,9 @@
     "creditsAdded": "Créditos añadidos: ya puedes generar.",
     "creditsCancelled": "Compra cancelada.",
     "packPitch": "{count} rutas extra con audio. No caducan.",
-    "buyPack": "Comprar {count} rutas — {price}"
+    "buyPack": "Comprar {count} rutas — {price}",
+    "shareWhatsapp": "Compartir por WhatsApp",
+    "shareText": "🧭 ¡Itinerario con IA de {city} en Duxiter!\n{link}"
   },
   "auth": {
     "loginTitle": "Bienvenido de nuevo",
