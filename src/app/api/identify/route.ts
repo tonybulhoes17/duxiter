@@ -25,6 +25,10 @@ interface Body {
   place?: string;
   note?: string;
   tzOffsetMinutes?: number;
+  subjectType?: "artwork" | "monument" | "other";
+  subjectTypeOther?: string;
+  inMuseum?: boolean;
+  museumName?: string;
 }
 
 /**
@@ -100,7 +104,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // where the photo was taken — helps disambiguate look-alike buildings
+  // where the subject in the photo actually is — helps disambiguate look-alike
+  // places. Not necessarily where the person is standing right now: they may
+  // be looking at a photo of an artwork from a museum they visited elsewhere.
   const lat = Number(body.coords?.lat);
   const lng = Number(body.coords?.lng);
   const hasCoords = Number.isFinite(lat) && Number.isFinite(lng);
@@ -110,24 +116,42 @@ export async function POST(req: NextRequest) {
     cityName;
   const note =
     typeof body.note === "string" ? body.note.trim().slice(0, 300) : "";
+  const museumName =
+    body.inMuseum && typeof body.museumName === "string"
+      ? body.museumName.trim().slice(0, 150)
+      : "";
+  const subjectTypeOther =
+    body.subjectType === "other" && typeof body.subjectTypeOther === "string"
+      ? body.subjectTypeOther.trim().slice(0, 100)
+      : "";
 
   const lang = isLocale(body.language) ? body.language : "en";
   const hint = await visionAnnotate(base64);
 
   const subject =
-    context === "street"
-      ? "building, monument, church, statue, bridge, square, fountain, historic house, street landmark, mural or point of interest"
-      : "artwork, sculpture, monument or exhibit";
+    body.subjectType === "artwork"
+      ? "artwork — a specific painting, sculpture or similar piece"
+      : body.subjectType === "monument"
+        ? "historic monument or building"
+        : subjectTypeOther
+          ? `${subjectTypeOther} (as described by the person)`
+          : context === "street"
+            ? "building, monument, church, statue, bridge, square, fountain, historic house, street landmark, mural or point of interest"
+            : "artwork, sculpture, monument or exhibit";
+
+  const locationLine = museumName
+    ? `The photo shows something inside the museum "${museumName}"${
+        placeText ? `, in ${placeText}` : ""
+      }. This may not be where the person is right now — trust the museum name over any GPS-derived location.`
+    : context === "street"
+      ? "The photo was taken outdoors, on the street — not necessarily inside a museum."
+      : cityName
+        ? `The photo was taken in a museum or site in ${cityName}.`
+        : "";
 
   const prompt = `You are a local guide. Identify the specific ${subject} shown in this photo.
-${
-  context === "street"
-    ? "The photo was taken outdoors, on the street — not necessarily inside a museum."
-    : cityName
-      ? `The photo was taken in a museum or site in ${cityName}.`
-      : ""
-}
-${placeText ? `The photo was taken at or near: ${placeText}. Use this to tell apart similar-looking places.` : ""}
+${locationLine}
+${placeText && !museumName ? `The subject is located at or near: ${placeText}. Use this to tell apart similar-looking places.` : ""}
 ${
   hint?.guess
     ? `An image search suggests it may be: "${hint.guess}"${
@@ -189,10 +213,16 @@ Return ONLY a JSON object:
           .filter((n) => NEED.has(n))
       : [];
 
-    // Bill only on a successful model response — a request that errors out
-    // below never reaches this point, so it never costs the user a use.
-    await admin.from("identify_usage").insert({ user_id: user.id, identified });
-    if (consumeCredit) {
+    // Bill only a confident identification — same bar the client uses to
+    // decide whether to show the "not identified" card (identified === false,
+    // or too shaky to trust even if the model marked it identified). A
+    // request that errors out below never reaches this point either, so it
+    // never costs the user a use.
+    const billable = identified && (confidence === null || confidence >= 0.45);
+    if (billable) {
+      await admin.from("identify_usage").insert({ user_id: user.id, identified });
+    }
+    if (billable && consumeCredit) {
       const { data: cur } = await admin
         .from("identify_credits")
         .select("balance")
@@ -220,6 +250,7 @@ Return ONLY a JSON object:
       confidence,
       needs: identified ? [] : needs,
       sources: hint?.webPages ?? [],
+      billed: billable,
     });
   } catch (err) {
     console.error("identify failed", err);

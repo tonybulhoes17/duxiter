@@ -10,13 +10,25 @@ import {
   MapPin,
   RefreshCw,
   Sparkles,
+  Volume2,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { reverseGeocode } from "@/lib/geocode";
 import { IDENTIFY_PACK_CREDITS, identifyPackPriceLabel } from "@/lib/identify-pack";
+import { locales, localeLabels, type Locale } from "@/i18n/config";
+import { cn } from "@/lib/utils";
 
-type Phase = "camera" | "loading" | "result" | "denied" | "error" | "limit";
+type Phase =
+  | "camera"
+  | "details"
+  | "loading"
+  | "result"
+  | "denied"
+  | "error"
+  | "limit";
+
+type SubjectType = "artwork" | "monument" | "other" | "";
 
 interface IdentifyResult {
   identified: boolean;
@@ -30,6 +42,7 @@ interface IdentifyResult {
   confidence?: number | null;
   needs?: string[];
   sources?: string[];
+  billed?: boolean;
 }
 
 function downscale(
@@ -45,6 +58,10 @@ function downscale(
   return canvas.toDataURL("image/jpeg", 0.82);
 }
 
+const PILL = "rounded-full border px-3 py-1.5 text-sm transition-colors";
+const PILL_ON = "border-primary bg-primary/10 text-text-primary";
+const PILL_OFF = "border-border text-text-secondary hover:border-white/20";
+
 export function CameraIdentifier({
   onClose,
   tourId,
@@ -55,14 +72,32 @@ export function CameraIdentifier({
   context?: "street" | "museum";
 }) {
   const t = useTranslations("camera");
-  const locale = useLocale();
+  const locale = useLocale() as Locale;
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
-  const lastImageRef = useRef<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [phase, setPhase] = useState<Phase>("camera");
+  const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [result, setResult] = useState<IdentifyResult | null>(null);
   const [buying, setBuying] = useState(false);
+
+  // details the person fills in after capturing, to help the model —
+  // what kind of subject it is, where it actually is (which may not be
+  // where the phone is right now), and what language to answer in.
+  const [subjectType, setSubjectType] = useState<SubjectType>("");
+  const [subjectTypeOther, setSubjectTypeOther] = useState("");
+  const [place, setPlace] = useState("");
+  const [locating, setLocating] = useState(context === "street");
+  const [inMuseum, setInMuseum] = useState(false);
+  const [museumName, setMuseumName] = useState("");
+  const [responseLanguage, setResponseLanguage] = useState<Locale>(locale);
+  const [note, setNote] = useState("");
+
+  const [audioSrc, setAudioSrc] = useState<string | null>(null);
+  const [audioLoading, setAudioLoading] = useState(false);
+
+  const coordsRef = useRef<{ lat: number; lng: number } | null>(null);
 
   // Plain browser APIs (not next/navigation's useSearchParams) so this
   // component doesn't force a Suspense boundary on every page that embeds it
@@ -96,12 +131,6 @@ export function CameraIdentifier({
       toast.error(t("failed"));
     }
   }
-
-  // location, captured best-effort for street mode
-  const coordsRef = useRef<{ lat: number; lng: number } | null>(null);
-  const [place, setPlace] = useState("");
-  const [locating, setLocating] = useState(context === "street");
-  const [note, setNote] = useState("");
 
   useEffect(() => {
     if (context !== "street" || !("geolocation" in navigator)) {
@@ -168,23 +197,53 @@ export function CameraIdentifier({
     streamRef.current = null;
   }
 
-  async function submit(image: string, extraNote?: string) {
-    lastImageRef.current = image;
+  function onCaptured(image: string) {
+    setPendingImage(image);
     stopCamera();
+    setPhase("details");
+  }
+
+  function captureFromCamera() {
+    const video = videoRef.current;
+    if (!video) return;
+    const vw = video.videoWidth || 1080;
+    const vh = video.videoHeight || 1440;
+    onCaptured(downscale(video, vw, vh));
+  }
+
+  function onFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const img = new Image();
+    img.onload = () => onCaptured(downscale(img, img.naturalWidth, img.naturalHeight));
+    img.onerror = () => setPhase("error");
+    img.src = URL.createObjectURL(file);
+  }
+
+  async function submit() {
+    if (!pendingImage) return;
     setPhase("loading");
+    setAudioSrc(null);
     try {
       const now = new Date();
       const res = await fetch("/api/identify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          image,
+          image: pendingImage,
           tourId,
-          language: locale,
+          language: responseLanguage,
           context,
           coords: coordsRef.current ?? undefined,
           place: place.trim() || undefined,
-          note: (extraNote ?? "").trim() || undefined,
+          note: note.trim() || undefined,
+          subjectType: subjectType || undefined,
+          subjectTypeOther:
+            subjectType === "other" ? subjectTypeOther.trim() || undefined : undefined,
+          inMuseum: context === "street" ? inMuseum : undefined,
+          museumName:
+            context === "street" && inMuseum ? museumName.trim() || undefined : undefined,
           tzOffsetMinutes: now.getTimezoneOffset(),
         }),
       });
@@ -200,27 +259,9 @@ export function CameraIdentifier({
     }
   }
 
-  function captureFromCamera() {
-    const video = videoRef.current;
-    if (!video) return;
-    const vw = video.videoWidth || 1080;
-    const vh = video.videoHeight || 1440;
-    void submit(downscale(video, vw, vh));
-  }
-
-  function onFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    const img = new Image();
-    img.onload = () =>
-      void submit(downscale(img, img.naturalWidth, img.naturalHeight));
-    img.onerror = () => setPhase("error");
-    img.src = URL.createObjectURL(file);
-  }
-
   function retake() {
     setResult(null);
+    setPendingImage(null);
     setNote("");
     setPhase("camera");
     setTimeout(() => {
@@ -237,6 +278,38 @@ export function CameraIdentifier({
     }, 0);
   }
 
+  function adjustDetails() {
+    // same photo, let them refine subject type / location / museum / clue
+    setPhase("details");
+  }
+
+  async function listen() {
+    if (!result || audioLoading) return;
+    if (audioSrc) {
+      audioRef.current?.play();
+      return;
+    }
+    setAudioLoading(true);
+    try {
+      const text = [result.name, result.description, result.interesting_fact]
+        .filter(Boolean)
+        .join(". ");
+      const res = await fetch("/api/identify/speak", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, language: responseLanguage }),
+      });
+      if (!res.ok) throw new Error();
+      const { audio } = (await res.json()) as { audio: string };
+      setAudioSrc(audio);
+      setTimeout(() => audioRef.current?.play(), 0);
+    } catch {
+      toast.error(t("failed"));
+    } finally {
+      setAudioLoading(false);
+    }
+  }
+
   const meta = result
     ? [result.creator, result.period, result.medium, result.location].filter(
         Boolean,
@@ -249,6 +322,8 @@ export function CameraIdentifier({
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black">
+      <audio ref={audioRef} src={audioSrc ?? undefined} className="hidden" />
+
       <button
         type="button"
         onClick={() => {
@@ -269,7 +344,7 @@ export function CameraIdentifier({
         onChange={onFilePicked}
       />
 
-      {(phase === "camera" || phase === "loading") && (
+      {phase === "camera" && (
         <>
           <video
             ref={videoRef}
@@ -278,49 +353,180 @@ export function CameraIdentifier({
             className="h-full w-full bg-neutral-900 object-cover"
           />
           <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-3 bg-gradient-to-t from-black/70 to-transparent p-8 safe-bottom">
-            {phase === "loading" ? (
-              <span className="flex items-center gap-2 text-sm text-white">
-                <Loader2 className="size-4 animate-spin" />
-                {t("identifying")}
+            {context === "street" && (
+              <span className="flex items-center gap-1.5 rounded-full bg-black/40 px-2.5 py-1 text-xs text-white/80">
+                <MapPin className="size-3.5" />
+                {locating ? t("gettingLocation") : place ? place : t("noLocation")}
               </span>
-            ) : (
-              <>
-                {context === "street" && (
-                  <span className="flex items-center gap-1.5 rounded-full bg-black/40 px-2.5 py-1 text-xs text-white/80">
-                    <MapPin className="size-3.5" />
-                    {locating
-                      ? t("gettingLocation")
-                      : place
-                        ? place
-                        : t("noLocation")}
-                  </span>
-                )}
-                <p className="text-sm text-white/80">
-                  {context === "street" ? t("pointStreet") : t("point")}
-                </p>
-                <div className="flex items-center gap-6">
-                  <button
-                    type="button"
-                    onClick={() => fileRef.current?.click()}
-                    aria-label={t("upload")}
-                    className="flex size-11 items-center justify-center rounded-full bg-white/15 text-white"
-                  >
-                    <ImageUp className="size-5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={captureFromCamera}
-                    aria-label={t("capture")}
-                    className="flex size-16 items-center justify-center rounded-full border-4 border-white bg-white/20"
-                  >
-                    <Camera className="size-7 text-white" />
-                  </button>
-                  <span className="size-11" />
-                </div>
-              </>
             )}
+            <p className="text-sm text-white/80">
+              {context === "street" ? t("pointStreet") : t("point")}
+            </p>
+            <div className="flex items-center gap-6">
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                aria-label={t("upload")}
+                className="flex size-11 items-center justify-center rounded-full bg-white/15 text-white"
+              >
+                <ImageUp className="size-5" />
+              </button>
+              <button
+                type="button"
+                onClick={captureFromCamera}
+                aria-label={t("capture")}
+                className="flex size-16 items-center justify-center rounded-full border-4 border-white bg-white/20"
+              >
+                <Camera className="size-7 text-white" />
+              </button>
+              <span className="size-11" />
+            </div>
           </div>
         </>
+      )}
+
+      {phase === "loading" && (
+        <div className="flex h-full flex-col items-center justify-center gap-2">
+          {pendingImage && (
+            <img
+              src={pendingImage}
+              alt=""
+              className="mb-4 max-h-[40vh] rounded-lg object-cover opacity-60"
+            />
+          )}
+          <span className="flex items-center gap-2 text-sm text-white">
+            <Loader2 className="size-4 animate-spin" />
+            {t("identifying")}
+          </span>
+        </div>
+      )}
+
+      {phase === "details" && (
+        <div className="mt-auto max-h-[92vh] overflow-y-auto rounded-t-2xl bg-card p-5 safe-bottom">
+          <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-subtle" />
+          {pendingImage && (
+            <img
+              src={pendingImage}
+              alt=""
+              className="mb-4 h-32 w-full rounded-lg object-cover"
+            />
+          )}
+          <h2 className="font-display text-lg font-bold">{t("detailsTitle")}</h2>
+          <p className="mt-1 text-xs text-text-muted">{t("detailsHint")}</p>
+
+          <div className="mt-4">
+            <p className="text-xs font-medium text-text-secondary">
+              {t("subjectTypeTitle")}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {(["artwork", "monument", "other"] as const).map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => setSubjectType(subjectType === opt ? "" : opt)}
+                  className={cn(PILL, subjectType === opt ? PILL_ON : PILL_OFF)}
+                >
+                  {t(`subjectType_${opt}`)}
+                </button>
+              ))}
+            </div>
+            {subjectType === "other" && (
+              <input
+                value={subjectTypeOther}
+                onChange={(e) => setSubjectTypeOther(e.target.value)}
+                placeholder={t("subjectTypeOtherPlaceholder")}
+                className="mt-2 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              />
+            )}
+          </div>
+
+          {context === "street" && (
+            <div className="mt-4 space-y-2">
+              <label className="block text-xs font-medium text-text-secondary">
+                {t("whereIsIt")}
+              </label>
+              <input
+                value={place}
+                onChange={(e) => setPlace(e.target.value)}
+                placeholder={locating ? t("gettingLocation") : t("wherePlaceholder")}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              />
+            </div>
+          )}
+
+          {context === "street" && (
+            <div className="mt-4">
+              <p className="text-xs font-medium text-text-secondary">
+                {t("inMuseumQuestion")}
+              </p>
+              <div className="mt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setInMuseum(true)}
+                  className={cn(PILL, inMuseum ? PILL_ON : PILL_OFF)}
+                >
+                  {t("yes")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInMuseum(false)}
+                  className={cn(PILL, !inMuseum ? PILL_ON : PILL_OFF)}
+                >
+                  {t("no")}
+                </button>
+              </div>
+              {inMuseum && (
+                <input
+                  value={museumName}
+                  onChange={(e) => setMuseumName(e.target.value)}
+                  placeholder={t("museumNamePlaceholder")}
+                  className="mt-2 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                />
+              )}
+            </div>
+          )}
+
+          <div className="mt-4">
+            <p className="text-xs font-medium text-text-secondary">
+              {t("responseLanguageLabel")}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {locales.map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => setResponseLanguage(l)}
+                  className={cn(PILL, responseLanguage === l ? PILL_ON : PILL_OFF)}
+                >
+                  {localeLabels[l].flag} {localeLabels[l].native}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-4 space-y-2">
+            <label className="block text-xs font-medium text-text-secondary">
+              {t("clueLabel")}
+            </label>
+            <input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder={t("cluePlaceholder")}
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+            />
+          </div>
+
+          <div className="mt-5 flex gap-2">
+            <Button variant="outline" className="flex-1" onClick={retake}>
+              <Camera className="size-4" />
+              {t("retake")}
+            </Button>
+            <Button className="flex-1" onClick={submit}>
+              <Sparkles className="size-4" />
+              {t("identifyCta")}
+            </Button>
+          </div>
+        </div>
       )}
 
       {phase === "denied" && (
@@ -384,6 +590,9 @@ export function CameraIdentifier({
               <p className="mt-1 text-sm text-text-secondary">
                 {t("notIdentifiedHint")}
               </p>
+              {result.billed === false && (
+                <p className="mt-1 text-xs text-text-muted">{t("notCharged")}</p>
+              )}
 
               {(result.description || meta.length > 0) && (
                 <div className="mt-3 rounded-md bg-subtle p-3">
@@ -403,46 +612,14 @@ export function CameraIdentifier({
                 </div>
               )}
 
-              <div className="mt-4 space-y-2">
-                <label className="block text-xs font-medium text-text-secondary">
-                  {t("whereAreYou")}
-                </label>
-                <input
-                  value={place}
-                  onChange={(e) => setPlace(e.target.value)}
-                  placeholder={t("wherePlaceholder")}
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                />
-                <label className="block pt-1 text-xs font-medium text-text-secondary">
-                  {t("clueLabel")}
-                </label>
-                <input
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder={t("cluePlaceholder")}
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                />
-              </div>
-
-              <div className="mt-4 flex gap-2">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={retake}
-                >
+              <div className="mt-5 flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={retake}>
                   <Camera className="size-4" />
                   {t("retake")}
                 </Button>
-                <Button
-                  className="flex-1"
-                  disabled={!place.trim() && !note.trim()}
-                  onClick={() => {
-                    if (lastImageRef.current)
-                      void submit(lastImageRef.current, note);
-                  }}
-                >
+                <Button className="flex-1" onClick={adjustDetails}>
                   <RefreshCw className="size-4" />
-                  {t("tryAgainHints")}
+                  {t("moreDetails")}
                 </Button>
               </div>
             </>
@@ -492,7 +669,20 @@ export function CameraIdentifier({
                   })}
                 </div>
               )}
-              <div className="mt-5 flex gap-2">
+              <Button
+                variant="outline"
+                className="mt-4 w-full"
+                onClick={listen}
+                disabled={audioLoading}
+              >
+                {audioLoading ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Volume2 className="size-4" />
+                )}
+                {t("listen")}
+              </Button>
+              <div className="mt-2 flex gap-2">
                 <Button variant="outline" className="flex-1" onClick={retake}>
                   <RefreshCw className="size-4" />
                   {t("retake")}
