@@ -121,6 +121,15 @@ export default async function TourPage({ params }: Props) {
           <h1 className="mt-1 max-w-3xl font-display text-3xl font-extrabold text-white md:text-5xl">
             {title}
           </h1>
+          <div className="mt-5">
+            <TourCta
+              tourId={tour.id}
+              access={access}
+              priceLabel={priceLabel}
+              basePriceUsd={Number(tour.price_usd)}
+              isAuthed={!!user}
+            />
+          </div>
         </div>
       </section>
 
