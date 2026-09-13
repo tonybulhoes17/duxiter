@@ -16,6 +16,7 @@ import {
   Headphones,
   Lightbulb,
   Loader2,
+  Lock,
   Navigation,
   Pause,
   Play,
@@ -28,7 +29,9 @@ import { MapView, type MapStop } from "@/components/player/map-view";
 import { useAudio, type AudioQueue } from "@/components/audio/audio-provider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { BuyItineraryModal } from "@/components/checkout/buy-itinerary-modal";
 import type { RichItinerary, ItineraryStop } from "@/lib/itinerary";
+import type { ItineraryAccessState } from "@/lib/itinerary-access";
 import { publicEnv } from "@/lib/env";
 
 type AudioStatus = "idle" | "pending" | "ready" | "failed";
@@ -60,12 +63,18 @@ export function ItineraryPlayer({
   itinerary,
   initialSaved,
   initialAudios,
+  access,
+  freeStops,
+  priceLabel,
 }: {
   itineraryId: string;
   cityName: string;
   itinerary: RichItinerary;
   initialSaved: boolean;
   initialAudios: InitialAudio[];
+  access: ItineraryAccessState;
+  freeStops: number;
+  priceLabel: string;
 }) {
   const t = useTranslations("itinerary");
   const audio = useAudio();
@@ -74,16 +83,35 @@ export function ItineraryPlayer({
   const [navMode, setNavMode] = useState(false);
   const [idx, setIdx] = useState(0);
   const [sheetOpen, setSheetOpen] = useState(true);
+  const purchased = access === "purchased";
+  const isLocked = useCallback(
+    (i: number) => !purchased && i >= freeStops,
+    [purchased, freeStops],
+  );
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const c = url.searchParams.get("checkout");
+    if (c === "success") toast.success(t("unlockSuccess"));
+    else if (c === "cancelled") toast.info(t("unlockCancelled"));
+    if (c) {
+      url.searchParams.delete("checkout");
+      url.searchParams.delete("session_id");
+      window.history.replaceState({}, "", url.pathname + url.search);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const { summary, stops, intro_narration, route_overview, practical_tips, plan_b } =
     itinerary;
 
-  // which clips do we actually need?
+  // which clips do we actually need? (locked stops arrive with a blank
+  // audioguide/to_next_stop from the server, so they're naturally skipped)
   const wanted = useMemo(() => {
     const keys: string[] = [];
     if (intro_narration && intro_narration.trim().length > 15) keys.push("intro");
     stops.forEach((s, i) => {
-      keys.push(kStop(i));
+      if (s.audioguide && s.audioguide.trim().length > 0) keys.push(kStop(i));
       if (i < stops.length - 1 && s.to_next_stop && s.to_next_stop.trim().length > 15)
         keys.push(kNext(i));
     });
@@ -229,9 +257,9 @@ export function ItineraryPlayer({
         label: s.title,
         lat: s.latitude,
         lng: s.longitude,
-        locked: false,
+        locked: isLocked(i),
       })),
-    [stops],
+    [stops, isLocked],
   );
 
   async function toggleSave() {
@@ -330,17 +358,34 @@ export function ItineraryPlayer({
             </button>
           </div>
 
-          <div className="px-4 pt-3">
-            <ClipButton t={t} {...stopControl(idx)} label={t("playStop")} />
-          </div>
+          {!isLocked(idx) && (
+            <div className="px-4 pt-3">
+              <ClipButton t={t} {...stopControl(idx)} label={t("playStop")} />
+            </div>
+          )}
 
           {sheetOpen && (
             <div className="max-h-[40vh] space-y-3 overflow-y-auto px-4 py-3">
-              <StopBody
-                t={t}
-                stop={stop}
-                nextCtl={idx < stops.length - 1 ? nextControl(idx) : undefined}
-              />
+              {isLocked(idx) ? (
+                <div className="rounded-md border border-dashed border-border bg-subtle/40 p-4 text-center">
+                  <Lock className="mx-auto size-5 text-text-muted" />
+                  <p className="mt-2 text-sm font-medium text-text-primary">
+                    {t("unlockTitle")}
+                  </p>
+                  <BuyItineraryModal
+                    itineraryId={itineraryId}
+                    priceLabel={priceLabel}
+                    triggerLabel={t("unlockCta", { price: priceLabel })}
+                    triggerClassName="mt-3 w-full"
+                  />
+                </div>
+              ) : (
+                <StopBody
+                  t={t}
+                  stop={stop}
+                  nextCtl={idx < stops.length - 1 ? nextControl(idx) : undefined}
+                />
+              )}
             </div>
           )}
 
@@ -412,6 +457,19 @@ export function ItineraryPlayer({
             </Badge>
           ) : null}
         </div>
+
+        {!purchased && (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+            <p className="text-sm text-text-secondary">
+              {t("unlockBanner", { count: freeStops })}
+            </p>
+            <BuyItineraryModal
+              itineraryId={itineraryId}
+              priceLabel={priceLabel}
+              triggerLabel={t("unlockCta", { price: priceLabel })}
+            />
+          </div>
+        )}
 
         {/* Listen CTA */}
         <div className="mt-4 flex flex-wrap gap-2">
@@ -513,17 +571,46 @@ export function ItineraryPlayer({
                 ) : null}
               </p>
 
-              <div className="mt-3">
-                <ClipButton t={t} {...stopControl(i)} label={t("playStop")} />
-              </div>
+              {isLocked(i) ? (
+                <div className="mt-3">
+                  {i === freeStops ? (
+                    <div className="rounded-md border border-dashed border-border bg-subtle/40 p-4 text-center">
+                      <Lock className="mx-auto size-5 text-text-muted" />
+                      <p className="mt-2 text-sm font-medium text-text-primary">
+                        {t("unlockTitle")}
+                      </p>
+                      <p className="mt-1 text-xs text-text-secondary">
+                        {t("unlockSubtitle")}
+                      </p>
+                      <BuyItineraryModal
+                        itineraryId={itineraryId}
+                        priceLabel={priceLabel}
+                        triggerLabel={t("unlockCta", { price: priceLabel })}
+                        triggerClassName="mt-3 w-full"
+                      />
+                    </div>
+                  ) : (
+                    <p className="flex items-center gap-1.5 text-xs text-text-muted">
+                      <Lock className="size-3.5" />
+                      {t("locked")}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div className="mt-3">
+                    <ClipButton t={t} {...stopControl(i)} label={t("playStop")} />
+                  </div>
 
-              <div className="mt-3">
-                <StopBody
-                  t={t}
-                  stop={stop}
-                  nextCtl={i < stops.length - 1 ? nextControl(i) : undefined}
-                />
-              </div>
+                  <div className="mt-3">
+                    <StopBody
+                      t={t}
+                      stop={stop}
+                      nextCtl={i < stops.length - 1 ? nextControl(i) : undefined}
+                    />
+                  </div>
+                </>
+              )}
             </li>
           ))}
         </ol>

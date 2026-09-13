@@ -183,20 +183,14 @@ export type ItineraryAudioRow = {
   updated_at: string;
 };
 
-export type ItineraryCreditRow = {
-  user_id: string;
-  balance: number;
-  lifetime_purchased: number;
-  updated_at: string;
-};
-
-export type ItineraryCreditOrderRow = {
+export type ItineraryPurchaseRow = {
   id: string;
   user_id: string;
+  itinerary_id: string;
   stripe_session_id: string | null;
   stripe_payment_intent_id: string | null;
-  credits: number;
-  amount_brl: number | null;
+  amount_paid_brl: number | null;
+  fx_rate_used: number | null;
   status: string;
   created_at: string;
   updated_at: string;
@@ -374,8 +368,7 @@ export type Database = {
       review_replies: Table<ReviewReplyRow>;
       ai_itineraries: Table<AiItineraryRow>;
       itinerary_audios: Table<ItineraryAudioRow>;
-      itinerary_credits: Table<ItineraryCreditRow>;
-      itinerary_credit_orders: Table<ItineraryCreditOrderRow>;
+      itinerary_purchases: Table<ItineraryPurchaseRow>;
       identify_credits: Table<IdentifyCreditRow>;
       identify_usage: Table<IdentifyUsageRow>;
       identify_credit_orders: Table<IdentifyCreditOrderRow>;
@@ -401,10 +394,6 @@ export type Database = {
       is_admin: {
         Args: { uid?: string };
         Returns: boolean;
-      };
-      add_itinerary_credits: {
-        Args: { p_user: string; p_credits: number };
-        Returns: undefined;
       };
       add_identify_credits: {
         Args: { p_user: string; p_credits: number };

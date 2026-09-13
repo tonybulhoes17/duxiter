@@ -203,7 +203,15 @@
     "packPitch": "{count} rutas extra con audio. No caducan.",
     "buyPack": "Comprar {count} rutas — {price}",
     "shareWhatsapp": "Compartir por WhatsApp",
-    "shareText": "🧭 ¡Itinerario con IA de {city} en Duxiter!\n{link}"
+    "shareText": "🧭 ¡Itinerario con IA de {city} en Duxiter!\n{link}",
+    "unlockTitle": "Desbloquea el itinerario completo",
+    "unlockSubtitle": "La primera parada es gratis. Paga una vez para desbloquear el audio y el texto de las próximas paradas — el acceso no caduca.",
+    "unlockCta": "Desbloquear por {price}",
+    "unlockBanner": "{count, plural, one {La primera parada es gratis} other {Las primeras # paradas son gratis}}. Desbloquea el resto para escuchar el itinerario completo.",
+    "unlockSuccess": "¡Itinerario desbloqueado! Disfruta el recorrido completo.",
+    "unlockCancelled": "Compra cancelada.",
+    "unlockPricingHint": "La 1ª parada es gratis. Desbloquea el resto con un pago único.",
+    "locked": "Bloqueado"
   },
   "auth": {
     "loginTitle": "Bienvenido de nuevo",

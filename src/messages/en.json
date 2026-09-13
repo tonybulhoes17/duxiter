@@ -203,7 +203,15 @@
     "packPitch": "{count} extra itineraries with audio. They never expire.",
     "buyPack": "Buy {count} itineraries — {price}",
     "shareWhatsapp": "Share on WhatsApp",
-    "shareText": "🧭 AI-made itinerary for {city} on Duxiter!\n{link}"
+    "shareText": "🧭 AI-made itinerary for {city} on Duxiter!\n{link}",
+    "unlockTitle": "Unlock the full itinerary",
+    "unlockSubtitle": "The first stop is free. Pay once to unlock the audio and text for every next stop — access never expires.",
+    "unlockCta": "Unlock for {price}",
+    "unlockBanner": "{count, plural, one {The first stop is free} other {The first # stops are free}}. Unlock the rest to hear the full itinerary.",
+    "unlockSuccess": "Itinerary unlocked! Enjoy the full tour.",
+    "unlockCancelled": "Purchase cancelled.",
+    "unlockPricingHint": "The 1st stop is free. Unlock the rest with a one-time payment.",
+    "locked": "Locked"
   },
   "auth": {
     "loginTitle": "Welcome back",

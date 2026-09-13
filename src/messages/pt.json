@@ -203,7 +203,15 @@
     "packPitch": "{count} roteiros extras com áudio. Não expiram.",
     "buyPack": "Comprar {count} roteiros — {price}",
     "shareWhatsapp": "Compartilhar no WhatsApp",
-    "shareText": "🧭 Roteiro de {city} feito com IA no Duxiter!\n{link}"
+    "shareText": "🧭 Roteiro de {city} feito com IA no Duxiter!\n{link}",
+    "unlockTitle": "Desbloqueie o roteiro completo",
+    "unlockSubtitle": "A primeira parada é grátis. Pague uma vez para liberar o áudio e o texto de todas as próximas paradas — o acesso não expira.",
+    "unlockCta": "Desbloquear por {price}",
+    "unlockBanner": "{count, plural, one {A primeira parada é grátis} other {As primeiras # paradas são grátis}}. Desbloqueie o resto para ouvir o roteiro completo.",
+    "unlockSuccess": "Roteiro desbloqueado! Aproveite o passeio completo.",
+    "unlockCancelled": "Compra cancelada.",
+    "unlockPricingHint": "A 1ª parada sai grátis. Desbloqueie o resto com um pagamento único.",
+    "locked": "Bloqueado"
   },
   "auth": {
     "loginTitle": "Bem-vindo de volta",
