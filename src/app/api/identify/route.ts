@@ -5,6 +5,7 @@ import { createOpenAI, VISION_MODEL } from "@/lib/openai";
 import { visionAnnotate } from "@/lib/vision";
 import { getLocalizedText, isLocale } from "@/i18n/config";
 import { isUuid } from "@/lib/validate";
+import { IDENTIFY_FREE_DAILY } from "@/lib/identify-pack";
 
 export const runtime = "nodejs";
 export const maxDuration = 45;
@@ -23,6 +24,7 @@ interface Body {
   coords?: { lat?: number; lng?: number };
   place?: string;
   note?: string;
+  tzOffsetMinutes?: number;
 }
 
 /**
@@ -51,12 +53,42 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid_image" }, { status: 400 });
   }
 
+  // ---- daily quota: a few free identifications per calendar day, then paid credits ----
+  const tz = Number.isFinite(body.tzOffsetMinutes)
+    ? (body.tzOffsetMinutes as number)
+    : 0;
+  const localNow = Date.now() - tz * 60000;
+  const startOfLocalDayUtc =
+    Math.floor(localNow / 86400000) * 86400000 + tz * 60000;
+  const admin = createAdminClient();
+  const { count: todayCount } = await admin
+    .from("identify_usage")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .gte("created_at", new Date(startOfLocalDayUtc).toISOString());
+
+  let consumeCredit = false;
+  if ((todayCount ?? 0) >= IDENTIFY_FREE_DAILY) {
+    const { data: cred, error: credErr } = await admin
+      .from("identify_credits")
+      .select("balance")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (credErr) console.error("identify credit read failed", credErr);
+    if (!cred || cred.balance <= 0) {
+      return NextResponse.json(
+        { error: "daily_limit", creditsAvailable: false },
+        { status: 402 },
+      );
+    }
+    consumeCredit = true;
+  }
+
   const context = body.context === "street" ? "street" : "museum";
 
   // context: which city / venue are we in?
   let cityName = "";
   if (isUuid(body.tourId)) {
-    const admin = createAdminClient();
     const { data } = await admin
       .from("tours")
       .select("cities(name)")
@@ -156,6 +188,23 @@ Return ONLY a JSON object:
           .map(String)
           .filter((n) => NEED.has(n))
       : [];
+
+    // Bill only on a successful model response — a request that errors out
+    // below never reaches this point, so it never costs the user a use.
+    await admin.from("identify_usage").insert({ user_id: user.id, identified });
+    if (consumeCredit) {
+      const { data: cur } = await admin
+        .from("identify_credits")
+        .select("balance")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (cur && cur.balance > 0) {
+        await admin
+          .from("identify_credits")
+          .update({ balance: cur.balance - 1 })
+          .eq("user_id", user.id);
+      }
+    }
 
     return NextResponse.json({
       identified,

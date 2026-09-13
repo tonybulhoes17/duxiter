@@ -290,7 +290,13 @@
     "wherePlaceholder": "Street, neighbourhood or city",
     "clueLabel": "Any clue?",
     "cluePlaceholder": "e.g. \"it's a theatre\", \"plaque says 1920\"",
-    "tryAgainHints": "Try again"
+    "tryAgainHints": "Try again",
+    "dailyLimit": "You've used today's free identifications. Come back tomorrow or buy more.",
+    "packPitch": "{count} extra photo identifications. They never expire.",
+    "buyPack": "Buy {count} identifications — {price}",
+    "creditsBalance": "{count} identifications",
+    "creditsAdded": "Credits added — you can identify now.",
+    "creditsCancelled": "Purchase cancelled."
   },
   "trip": {
     "title": "Trips",

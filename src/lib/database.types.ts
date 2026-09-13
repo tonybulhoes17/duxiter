@@ -202,6 +202,32 @@ export type ItineraryCreditOrderRow = {
   updated_at: string;
 };
 
+export type IdentifyCreditRow = {
+  user_id: string;
+  balance: number;
+  lifetime_purchased: number;
+  updated_at: string;
+};
+
+export type IdentifyUsageRow = {
+  id: string;
+  user_id: string;
+  identified: boolean | null;
+  created_at: string;
+};
+
+export type IdentifyCreditOrderRow = {
+  id: string;
+  user_id: string;
+  stripe_session_id: string | null;
+  stripe_payment_intent_id: string | null;
+  credits: number;
+  amount_brl: number | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type TripRow = {
   id: string;
   name: string;
@@ -350,6 +376,9 @@ export type Database = {
       itinerary_audios: Table<ItineraryAudioRow>;
       itinerary_credits: Table<ItineraryCreditRow>;
       itinerary_credit_orders: Table<ItineraryCreditOrderRow>;
+      identify_credits: Table<IdentifyCreditRow>;
+      identify_usage: Table<IdentifyUsageRow>;
+      identify_credit_orders: Table<IdentifyCreditOrderRow>;
       trips: Table<TripRow>;
       trip_members: Table<TripMemberRow>;
       trip_expenses: Table<TripExpenseRow>;
@@ -374,6 +403,10 @@ export type Database = {
         Returns: boolean;
       };
       add_itinerary_credits: {
+        Args: { p_user: string; p_credits: number };
+        Returns: undefined;
+      };
+      add_identify_credits: {
         Args: { p_user: string; p_credits: number };
         Returns: undefined;
       };

@@ -2,11 +2,21 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Camera, ImageUp, Loader2, MapPin, RefreshCw, X } from "lucide-react";
+import { toast } from "sonner";
+import {
+  Camera,
+  ImageUp,
+  Loader2,
+  MapPin,
+  RefreshCw,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { reverseGeocode } from "@/lib/geocode";
+import { IDENTIFY_PACK_CREDITS, identifyPackPriceLabel } from "@/lib/identify-pack";
 
-type Phase = "camera" | "loading" | "result" | "denied" | "error";
+type Phase = "camera" | "loading" | "result" | "denied" | "error" | "limit";
 
 interface IdentifyResult {
   identified: boolean;
@@ -52,6 +62,40 @@ export function CameraIdentifier({
   const lastImageRef = useRef<string | null>(null);
   const [phase, setPhase] = useState<Phase>("camera");
   const [result, setResult] = useState<IdentifyResult | null>(null);
+  const [buying, setBuying] = useState(false);
+
+  // Plain browser APIs (not next/navigation's useSearchParams) so this
+  // component doesn't force a Suspense boundary on every page that embeds it
+  // (it's also mounted inline inside the museum tour player).
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const c = url.searchParams.get("credits");
+    if (c === "success") toast.success(t("creditsAdded"));
+    else if (c === "cancelled") toast.info(t("creditsCancelled"));
+    if (c) {
+      url.searchParams.delete("credits");
+      url.searchParams.delete("session_id");
+      window.history.replaceState({}, "", url.pathname + url.search);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function buyPack() {
+    setBuying(true);
+    try {
+      const res = await fetch("/api/identify/credits/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const { url } = (await res.json()) as { url?: string };
+      if (url) window.location.assign(url);
+      else throw new Error();
+    } catch {
+      setBuying(false);
+      toast.error(t("failed"));
+    }
+  }
 
   // location, captured best-effort for street mode
   const coordsRef = useRef<{ lat: number; lng: number } | null>(null);
@@ -129,6 +173,7 @@ export function CameraIdentifier({
     stopCamera();
     setPhase("loading");
     try {
+      const now = new Date();
       const res = await fetch("/api/identify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -140,8 +185,13 @@ export function CameraIdentifier({
           coords: coordsRef.current ?? undefined,
           place: place.trim() || undefined,
           note: (extraNote ?? "").trim() || undefined,
+          tzOffsetMinutes: now.getTimezoneOffset(),
         }),
       });
+      if (res.status === 402) {
+        setPhase("limit");
+        return;
+      }
       if (!res.ok) throw new Error();
       setResult((await res.json()) as IdentifyResult);
       setPhase("result");
@@ -293,6 +343,31 @@ export function CameraIdentifier({
           <Button variant="outline" onClick={retake}>
             <RefreshCw className="size-4" />
             {t("tryAgain")}
+          </Button>
+        </div>
+      )}
+
+      {phase === "limit" && (
+        <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
+          <p className="font-display text-lg font-bold text-white">
+            {t("dailyLimit")}
+          </p>
+          <p className="max-w-xs text-sm text-white/70">
+            {t("packPitch", { count: IDENTIFY_PACK_CREDITS })}
+          </p>
+          <Button onClick={buyPack} disabled={buying} className="mt-2 w-full max-w-xs">
+            {buying ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Sparkles className="size-4" />
+            )}
+            {t("buyPack", {
+              count: IDENTIFY_PACK_CREDITS,
+              price: identifyPackPriceLabel(),
+            })}
+          </Button>
+          <Button variant="ghost" onClick={onClose} className="text-white">
+            {t("close")}
           </Button>
         </div>
       )}

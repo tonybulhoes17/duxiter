@@ -290,7 +290,13 @@
     "wherePlaceholder": "Rua, bairro ou cidade",
     "clueLabel": "Alguma pista?",
     "cluePlaceholder": "ex.: \"é um teatro\", \"placa diz 1920\"",
-    "tryAgainHints": "Tentar de novo"
+    "tryAgainHints": "Tentar de novo",
+    "dailyLimit": "Você já usou suas identificações grátis de hoje. Volte amanhã ou compre mais.",
+    "packPitch": "{count} identificações extras por foto. Não expiram.",
+    "buyPack": "Comprar {count} identificações — {price}",
+    "creditsBalance": "{count} identificações",
+    "creditsAdded": "Créditos adicionados — já pode identificar.",
+    "creditsCancelled": "Compra cancelada."
   },
   "trip": {
     "title": "Viagens",
