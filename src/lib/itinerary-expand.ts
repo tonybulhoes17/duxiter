@@ -46,11 +46,17 @@ export function shouldExpand(itin: RichItinerary): boolean {
   return itin.stops.some(needsExpansion);
 }
 
+interface ExpandResult {
+  text: string;
+  inputTokens: number;
+  outputTokens: number;
+}
+
 async function expandOne(
   stop: ItineraryStop,
   place: string,
   lang: Locale,
-): Promise<string> {
+): Promise<ExpandResult> {
   const openai = createOpenAI();
   const langName = LANG_NAME[lang] ?? "English";
   const { min, max } = targetWords(stop);
@@ -87,7 +93,17 @@ Return ONLY the expanded narration text — no preamble, no quotes, nothing else
     ],
   });
   const out = res.choices[0]?.message?.content?.trim() ?? "";
-  return wordCount(out) > wordCount(stop.audioguide) + 30 ? out : stop.audioguide;
+  const inputTokens = res.usage?.prompt_tokens ?? 0;
+  const outputTokens = res.usage?.completion_tokens ?? 0;
+  const text = wordCount(out) > wordCount(stop.audioguide) + 30 ? out : stop.audioguide;
+  return { text, inputTokens, outputTokens };
+}
+
+export interface ExpandUsage {
+  model: string;
+  calls: number;
+  inputTokens: number;
+  outputTokens: number;
 }
 
 /**
@@ -100,22 +116,30 @@ export async function expandAudioguides(
   itin: RichItinerary,
   lang: Locale,
   place: string,
-): Promise<RichItinerary> {
+): Promise<{ itinerary: RichItinerary; usage: ExpandUsage }> {
+  const emptyUsage: ExpandUsage = { model: EXPAND_MODEL, calls: 0, inputTokens: 0, outputTokens: 0 };
   const todo = new Set(
     itin.stops.flatMap((s, i) => (needsExpansion(s) ? [i] : [])),
   );
-  if (todo.size === 0) return itin;
+  if (todo.size === 0) return { itinerary: itin, usage: emptyUsage };
 
+  const indices = [...todo];
   const results = await Promise.allSettled(
-    itin.stops.map((s, i) =>
-      todo.has(i) ? expandOne(s, place, lang) : Promise.resolve(s.audioguide),
-    ),
+    indices.map((i) => expandOne(itin.stops[i], place, lang)),
   );
-  const stops = itin.stops.map((s, i) => {
-    const r = results[i];
-    return r.status === "fulfilled" && r.value
-      ? { ...s, audioguide: r.value }
-      : s;
+  const usage = { ...emptyUsage };
+  const byIndex = new Map<number, ExpandResult>();
+  results.forEach((r, k) => {
+    if (r.status === "fulfilled") {
+      usage.calls++;
+      usage.inputTokens += r.value.inputTokens;
+      usage.outputTokens += r.value.outputTokens;
+      byIndex.set(indices[k], r.value);
+    }
   });
-  return { ...itin, stops };
+  const stops = itin.stops.map((s, i) => {
+    const r = byIndex.get(i);
+    return r?.text ? { ...s, audioguide: r.text } : s;
+  });
+  return { itinerary: { ...itin, stops }, usage };
 }

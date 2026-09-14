@@ -2,7 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizeItinerary } from "@/lib/itinerary";
-import { synthesizeNarration } from "@/lib/tts";
+import { synthesizeNarration, TTS_MODEL } from "@/lib/tts";
+import { estimateTtsCostUsd, trackUsage } from "@/lib/usage-tracking";
 import { isLocale } from "@/i18n/config";
 import { isUuid } from "@/lib/validate";
 
@@ -116,6 +117,15 @@ export async function POST(
       .eq("itinerary_id", id)
       .eq("stop_index", stopIndex)
       .eq("kind", kind);
+
+    void trackUsage({
+      event_type: "itinerary_tts",
+      user_id: user.id,
+      model: TTS_MODEL,
+      chars: charCount,
+      cost_usd: estimateTtsCostUsd(TTS_MODEL, charCount),
+      metadata: { itinerary_id: id, kind, stop_index: stopIndex },
+    });
 
     return NextResponse.json({
       kind,

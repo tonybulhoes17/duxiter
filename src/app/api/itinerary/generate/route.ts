@@ -8,6 +8,7 @@ import {
 } from "@/lib/openai";
 import { buildItineraryPrompt } from "@/lib/itinerary-prompt";
 import { expandAudioguides, shouldExpand } from "@/lib/itinerary-expand";
+import { estimateTextCostUsd, trackUsage } from "@/lib/usage-tracking";
 import {
   normalizeItinerary,
   TIME_OPTIONS,
@@ -16,7 +17,6 @@ import {
   START_MODES,
   type Destination,
   type Pace,
-  type RichItinerary,
   type StartLocation,
   type StartMode,
 } from "@/lib/itinerary";
@@ -178,6 +178,8 @@ export async function POST(req: NextRequest) {
   try {
     const openai = createOpenAI();
     let text: string;
+    let inputTokens = 0;
+    let outputTokens = 0;
 
     if (ITINERARY_WEB_SEARCH) {
       const res = await openai.responses.create({
@@ -189,6 +191,8 @@ export async function POST(req: NextRequest) {
         max_output_tokens: 16000,
       });
       text = res.output_text ?? "";
+      inputTokens = res.usage?.input_tokens ?? 0;
+      outputTokens = res.usage?.output_tokens ?? 0;
     } else {
       const completion = await openai.chat.completions.create({
         model: ITINERARY_MODEL,
@@ -205,7 +209,19 @@ export async function POST(req: NextRequest) {
         ],
       });
       text = completion.choices[0]?.message?.content ?? "{}";
+      inputTokens = completion.usage?.prompt_tokens ?? 0;
+      outputTokens = completion.usage?.completion_tokens ?? 0;
     }
+
+    void trackUsage({
+      event_type: "itinerary_generate",
+      user_id: user.id,
+      model: ITINERARY_MODEL,
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
+      cost_usd: estimateTextCostUsd(ITINERARY_MODEL, inputTokens, outputTokens, ITINERARY_WEB_SEARCH),
+      metadata: { web_search: ITINERARY_WEB_SEARCH, freeform, minutes, pace, travel_mode: travelMode },
+    });
 
     rawObject = extractJsonObject(text);
   } catch (err) {
@@ -243,11 +259,26 @@ export async function POST(req: NextRequest) {
           language,
           destination?.label || destination?.query || placeName,
         ),
-        new Promise<RichItinerary>((_, rej) =>
+        new Promise<never>((_, rej) =>
           setTimeout(() => rej(new Error("expand timeout")), 28000),
         ),
       ]);
-      itinerary = expanded;
+      itinerary = expanded.itinerary;
+      if (expanded.usage.calls > 0) {
+        void trackUsage({
+          event_type: "itinerary_expand",
+          user_id: user.id,
+          model: expanded.usage.model,
+          input_tokens: expanded.usage.inputTokens,
+          output_tokens: expanded.usage.outputTokens,
+          cost_usd: estimateTextCostUsd(
+            expanded.usage.model,
+            expanded.usage.inputTokens,
+            expanded.usage.outputTokens,
+          ),
+          metadata: { calls: expanded.usage.calls },
+        });
+      }
     } catch (err) {
       console.warn("audioguide expansion skipped:", (err as Error).message);
     }

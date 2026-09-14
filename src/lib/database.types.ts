@@ -210,6 +210,19 @@ export type IdentifyUsageRow = {
   created_at: string;
 };
 
+export type AiUsageEventRow = {
+  id: string;
+  event_type: string;
+  user_id: string | null;
+  model: string | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  chars: number | null;
+  cost_usd: number;
+  metadata: Json | null;
+  created_at: string;
+};
+
 export type IdentifyCreditOrderRow = {
   id: string;
   user_id: string;
@@ -372,6 +385,7 @@ export type Database = {
       identify_credits: Table<IdentifyCreditRow>;
       identify_usage: Table<IdentifyUsageRow>;
       identify_credit_orders: Table<IdentifyCreditOrderRow>;
+      ai_usage_events: Table<AiUsageEventRow>;
       trips: Table<TripRow>;
       trip_members: Table<TripMemberRow>;
       trip_expenses: Table<TripExpenseRow>;

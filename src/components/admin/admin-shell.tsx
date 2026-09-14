@@ -9,6 +9,7 @@ import {
   MapPin,
   Menu,
   Route,
+  TrendingDown,
   Users,
   Wallet,
   X,
@@ -25,6 +26,7 @@ const NAV = [
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/admin/finances", label: "Finances", icon: Wallet },
+  { href: "/admin/costs", label: "AI Costs", icon: TrendingDown },
 ] as const;
 
 export function AdminShell({ children }: { children: React.ReactNode }) {

@@ -6,6 +6,7 @@ import { visionAnnotate } from "@/lib/vision";
 import { getLocalizedText, isLocale } from "@/i18n/config";
 import { isUuid } from "@/lib/validate";
 import { IDENTIFY_FREE_DAILY } from "@/lib/identify-pack";
+import { estimateTextCostUsd, trackUsage } from "@/lib/usage-tracking";
 
 export const runtime = "nodejs";
 export const maxDuration = 45;
@@ -197,6 +198,20 @@ Return ONLY a JSON object:
     const parsed = JSON.parse(
       completion.choices[0]?.message?.content ?? "{}",
     ) as Record<string, unknown>;
+
+    void trackUsage({
+      event_type: "identify",
+      user_id: user.id,
+      model: VISION_MODEL,
+      input_tokens: completion.usage?.prompt_tokens ?? 0,
+      output_tokens: completion.usage?.completion_tokens ?? 0,
+      cost_usd: estimateTextCostUsd(
+        VISION_MODEL,
+        completion.usage?.prompt_tokens ?? 0,
+        completion.usage?.completion_tokens ?? 0,
+      ),
+      metadata: { context, subject_type: body.subjectType ?? null },
+    });
 
     const confidence = (() => {
       const c = Number(parsed.confidence);

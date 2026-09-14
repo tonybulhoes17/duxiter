@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getUsdToBrlRate } from "@/lib/fx";
 import type { LocalizedText } from "@/i18n/config";
 import type {
   CityRow,
@@ -404,5 +405,143 @@ export async function getAdminOverview(): Promise<AdminOverview> {
       created_at: p.created_at,
     })),
     dailyRevenue: Array.from(buckets, ([date, brl]) => ({ date, brl })),
+  };
+}
+
+// ============================================================
+// AI cost / usage — how much OpenAI (text + vision + TTS) actually costs,
+// set next to actual revenue so unit-economics assumptions can be replaced
+// with real numbers instead of estimates.
+// ============================================================
+
+export interface AdminCostsSummary {
+  fxRate: number;
+  costUsd: { today: number; d7: number; d30: number };
+  costBrl: { today: number; d7: number; d30: number };
+  revenueBrl: { today: number; d7: number; d30: number };
+  byEventType: { event_type: string; count: number; cost_usd: number }[];
+  dailyCostUsd: { date: string; usd: number }[];
+  recentEvents: {
+    id: string;
+    event_type: string;
+    model: string | null;
+    cost_usd: number;
+    created_at: string;
+  }[];
+}
+
+function sumWindow(
+  rows: { created_at: string; amt: number }[],
+  since: Date,
+): number {
+  return rows.reduce(
+    (a, r) => (new Date(r.created_at) >= since ? a + r.amt : a),
+    0,
+  );
+}
+
+export async function getAdminCosts(): Promise<AdminCostsSummary> {
+  const admin = createAdminClient();
+  const now = new Date();
+  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const start7 = new Date(startToday.getTime() - 6 * 86400000);
+  const start30 = new Date(startToday.getTime() - 29 * 86400000);
+
+  const [
+    { data: usageRows },
+    fxRate,
+    { data: purchases },
+    { data: itinPurchases },
+    { data: identifyOrders },
+  ] = await Promise.all([
+    admin
+      .from("ai_usage_events")
+      .select("id, event_type, model, cost_usd, created_at")
+      .gte("created_at", start30.toISOString())
+      .order("created_at", { ascending: false }),
+    getUsdToBrlRate(),
+    admin
+      .from("purchases")
+      .select("amount_paid_brl, created_at")
+      .eq("status", "completed")
+      .gte("created_at", start30.toISOString()),
+    admin
+      .from("itinerary_purchases")
+      .select("amount_paid_brl, created_at")
+      .eq("status", "completed")
+      .gte("created_at", start30.toISOString()),
+    admin
+      .from("identify_credit_orders")
+      .select("amount_brl, created_at")
+      .eq("status", "completed")
+      .gte("created_at", start30.toISOString()),
+  ]);
+
+  const usage = (usageRows ?? []) as {
+    id: string;
+    event_type: string;
+    model: string | null;
+    cost_usd: number;
+    created_at: string;
+  }[];
+
+  const costRows = usage.map((r) => ({ created_at: r.created_at, amt: Number(r.cost_usd ?? 0) }));
+  const costUsd = {
+    today: sumWindow(costRows, startToday),
+    d7: sumWindow(costRows, start7),
+    d30: sumWindow(costRows, start30),
+  };
+
+  const revenueRows = [
+    ...((purchases ?? []) as { amount_paid_brl: number | null; created_at: string }[]).map(
+      (r) => ({ created_at: r.created_at, amt: Number(r.amount_paid_brl ?? 0) }),
+    ),
+    ...((itinPurchases ?? []) as { amount_paid_brl: number | null; created_at: string }[]).map(
+      (r) => ({ created_at: r.created_at, amt: Number(r.amount_paid_brl ?? 0) }),
+    ),
+    ...((identifyOrders ?? []) as { amount_brl: number | null; created_at: string }[]).map(
+      (r) => ({ created_at: r.created_at, amt: Number(r.amount_brl ?? 0) }),
+    ),
+  ];
+  const revenueBrl = {
+    today: sumWindow(revenueRows, startToday),
+    d7: sumWindow(revenueRows, start7),
+    d30: sumWindow(revenueRows, start30),
+  };
+
+  const byType = new Map<string, { count: number; cost_usd: number }>();
+  const byDay = new Map<string, number>();
+  for (const r of usage) {
+    const t = byType.get(r.event_type) ?? { count: 0, cost_usd: 0 };
+    t.count += 1;
+    t.cost_usd += Number(r.cost_usd ?? 0);
+    byType.set(r.event_type, t);
+
+    const day = r.created_at.slice(0, 10);
+    byDay.set(day, (byDay.get(day) ?? 0) + Number(r.cost_usd ?? 0));
+  }
+
+  return {
+    fxRate,
+    costUsd,
+    costBrl: {
+      today: costUsd.today * fxRate,
+      d7: costUsd.d7 * fxRate,
+      d30: costUsd.d30 * fxRate,
+    },
+    revenueBrl,
+    byEventType: Array.from(byType, ([event_type, v]) => ({ event_type, ...v })).sort(
+      (a, b) => b.cost_usd - a.cost_usd,
+    ),
+    dailyCostUsd: Array.from(byDay, ([date, usd]) => ({ date, usd })).sort((a, b) =>
+      a.date.localeCompare(b.date),
+    ),
+    recentEvents: usage.slice(0, 25).map((r) => ({
+      id: r.id,
+      event_type: r.event_type,
+      model: r.model,
+      cost_usd: Number(r.cost_usd ?? 0),
+      created_at: r.created_at,
+    })),
   };
 }
