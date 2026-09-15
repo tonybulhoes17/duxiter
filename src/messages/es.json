@@ -408,7 +408,8 @@
     "openSummary": "Ver resumen del viaje"
   },
   "footer": {
-    "rights": "© Duxiter. Todos los derechos reservados."
+    "rights": "© Duxiter. Todos los derechos reservados.",
+    "terms": "Términos de Uso"
   },
   "contact": {
     "cta": "Contáctanos",

@@ -408,7 +408,8 @@
     "openSummary": "View trip summary"
   },
   "footer": {
-    "rights": "© Duxiter. All rights reserved."
+    "rights": "© Duxiter. All rights reserved.",
+    "terms": "Terms of Use"
   },
   "contact": {
     "cta": "Contact us",
