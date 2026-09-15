@@ -58,9 +58,11 @@ export default function TermsPage() {
       <P>
         O Serviço é oferecido por{" "}
         <strong>
-          [RAZÃO SOCIAL / NOME COMPLETO DO RESPONSÁVEL — PREENCHER], inscrito
-          no CPF/CNPJ nº [PREENCHER], com endereço em [PREENCHER]
-        </strong>{" "}
+          João Antônio Bulhões Leão, pessoa física inscrita no CPF nº
+          024.000.955-07
+        </strong>
+        , cujo canal de contato é o formulário &ldquo;Fale conosco&rdquo;
+        disponível no rodapé do Serviço{" "}
         (&ldquo;Duxiter&rdquo;, &ldquo;nós&rdquo;). Ao criar uma conta,
         comprar um passeio ou roteiro, ou de qualquer forma usar o Serviço,
         você (&ldquo;usuário&rdquo;, &ldquo;você&rdquo;) declara que leu,
