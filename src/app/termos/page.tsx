@@ -47,12 +47,13 @@ export default function TermsPage() {
         Termos de Uso
       </h1>
       <P>
-        Estes Termos de Uso ("Termos") regem o acesso e o uso da plataforma
-        Duxiter — aplicativo web e progressivo (PWA) disponível em{" "}
-        <strong>duxiter.com.br</strong> — incluindo passeios com áudio-guia
-        pré-produzidos, roteiros gerados por inteligência artificial,
-        identificação de locais e obras por foto, e a ferramenta de divisão de
-        despesas de viagem em grupo (em conjunto, o "Serviço").
+        Estes Termos de Uso (&ldquo;Termos&rdquo;) regem o acesso e o uso da
+        plataforma Duxiter — aplicativo web e progressivo (PWA) disponível
+        em <strong>duxiter.com.br</strong> — incluindo passeios com
+        áudio-guia pré-produzidos, roteiros gerados por inteligência
+        artificial, identificação de locais e obras por foto, e a ferramenta
+        de divisão de despesas de viagem em grupo (em conjunto, o
+        &ldquo;Serviço&rdquo;).
       </P>
       <P>
         O Serviço é oferecido por{" "}
@@ -60,10 +61,11 @@ export default function TermsPage() {
           [RAZÃO SOCIAL / NOME COMPLETO DO RESPONSÁVEL — PREENCHER], inscrito
           no CPF/CNPJ nº [PREENCHER], com endereço em [PREENCHER]
         </strong>{" "}
-        ("Duxiter", "nós"). Ao criar uma conta, comprar um passeio ou roteiro,
-        ou de qualquer forma usar o Serviço, você ("usuário", "você") declara
-        que leu, entendeu e concorda com estes Termos. Se você não concorda,
-        não utilize o Serviço.
+        (&ldquo;Duxiter&rdquo;, &ldquo;nós&rdquo;). Ao criar uma conta,
+        comprar um passeio ou roteiro, ou de qualquer forma usar o Serviço,
+        você (&ldquo;usuário&rdquo;, &ldquo;você&rdquo;) declara que leu,
+        entendeu e concorda com estes Termos. Se você não concorda, não
+        utilize o Serviço.
       </P>
 
       <H2>1. Quem pode usar o Serviço</H2>
@@ -187,8 +189,9 @@ export default function TermsPage() {
         <strong>
           Textos, narrações em áudio, rotas, distâncias, horários,
           informações históricas/culturais e sugestões práticas — sejam de
-          passeios pré-produzidos ou gerados por IA — são fornecidos "como
-          estão" e podem estar incompletos, desatualizados ou conter erros.
+          passeios pré-produzidos ou gerados por IA — são fornecidos
+          &ldquo;como estão&rdquo; e podem estar incompletos, desatualizados
+          ou conter erros.
         </strong>{" "}
         Isso inclui, sem se limitar a:
       </P>
@@ -255,9 +258,10 @@ export default function TermsPage() {
 
       <H2>9. Isenção de garantias e limitação de responsabilidade</H2>
       <P>
-        Na máxima extensão permitida pela lei aplicável, o Serviço é fornecido
-        "no estado em que se encontra" e "conforme disponível", sem garantias
-        de qualquer tipo, incluindo de adequação a uma finalidade específica,
+        Na máxima extensão permitida pela lei aplicável, o Serviço é
+        fornecido &ldquo;no estado em que se encontra&rdquo; e &ldquo;conforme
+        disponível&rdquo;, sem garantias de qualquer tipo, incluindo de
+        adequação a uma finalidade específica,
         disponibilidade ininterrupta ou ausência de erros. O Duxiter não será
         responsável por danos indiretos, incidentais ou consequenciais
         decorrentes do uso do Serviço, incluindo — mas não se limitando a —
@@ -302,8 +306,8 @@ export default function TermsPage() {
 
       <H2>14. Contato</H2>
       <P>
-        Dúvidas sobre estes Termos podem ser enviadas pelo formulário "Fale
-        conosco", disponível no rodapé do Serviço.
+        Dúvidas sobre estes Termos podem ser enviadas pelo formulário
+        &ldquo;Fale conosco&rdquo;, disponível no rodapé do Serviço.
       </P>
     </div>
   );
