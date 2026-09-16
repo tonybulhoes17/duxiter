@@ -16,6 +16,12 @@ export async function SiteFooter() {
           >
             {t("terms")}
           </Link>
+          <Link
+            href="/privacidade"
+            className="text-xs text-text-muted hover:text-text-secondary"
+          >
+            {t("privacy")}
+          </Link>
           <ContactDialog />
         </div>
       </div>
