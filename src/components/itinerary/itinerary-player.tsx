@@ -105,9 +105,12 @@ export function ItineraryPlayer({
   const { summary, stops, intro_narration, route_overview, practical_tips, plan_b } =
     itinerary;
 
-  // which clips do we actually need? (locked stops arrive with a blank
-  // audioguide/to_next_stop from the server, so they're naturally skipped)
-  const wanted = useMemo(() => {
+  // ordered list of every clip that could exist, in listening order —
+  // "intro, stop0, next0, stop1, next1, …". Locked stops arrive with a
+  // blank audioguide/to_next_stop from the server, so they're naturally
+  // skipped. Used to know what "comes next" for look-ahead prefetch, and
+  // for the initial eager-generation slice below.
+  const sequence = useMemo(() => {
     const keys: string[] = [];
     if (intro_narration && intro_narration.trim().length > 15) keys.push("intro");
     stops.forEach((s, i) => {
@@ -139,6 +142,7 @@ export function ItineraryPlayer({
   const clipsRef = useRef(clips);
   clipsRef.current = clips;
   const requestedRef = useRef<Set<string>>(new Set());
+  const pendingAutoPlayRef = useRef<string | null>(null);
 
   const setClip = useCallback((key: string, next: Clip) => {
     setClips((prev) => ({ ...prev, [key]: next }));
@@ -163,31 +167,46 @@ export function ItineraryPlayer({
     [itineraryId, setClip],
   );
 
-  // background-generate everything, 2 at a time, in queue order
-  useEffect(() => {
-    let cancelled = false;
-    const todo = wanted.filter((k) => {
-      const s = clipsRef.current[k]?.status;
-      return s !== "ready" && s !== "pending" && !requestedRef.current.has(k);
-    });
-    let active = 0;
-    let cursor = 0;
-    function pump() {
-      while (!cancelled && active < 2 && cursor < todo.length) {
-        const key = todo[cursor++];
-        active++;
-        generate(key).finally(() => {
-          active--;
-          if (!cancelled) pump();
-        });
+  // Small concurrency-2 fetch queue, fed by the eager + look-ahead effects
+  // below and by direct taps on an unplayed stop — never the whole
+  // itinerary at once. Someone who only listens to 2 stops only ever costs
+  // the app 2 stops' worth of narration, not the full route.
+  const fetchQueueRef = useRef<{ active: number; pending: string[] }>({
+    active: 0,
+    pending: [],
+  });
+  const requestGeneration = useCallback(
+    (keys: string[]) => {
+      const box = fetchQueueRef.current;
+      for (const key of keys) {
+        const status = clipsRef.current[key]?.status;
+        if (status === "ready" || status === "pending" || requestedRef.current.has(key))
+          continue;
+        box.pending.push(key);
       }
-    }
-    pump();
-    return () => {
-      cancelled = true;
-    };
+      const pump = () => {
+        while (box.active < 2 && box.pending.length > 0) {
+          const key = box.pending.shift()!;
+          if (requestedRef.current.has(key)) continue;
+          box.active++;
+          generate(key).finally(() => {
+            box.active--;
+            pump();
+          });
+        }
+      };
+      pump();
+    },
+    [generate],
+  );
+
+  // Eager: only the very first stretch, so pressing "Ouvir" has near-zero
+  // wait. Everything else generates on demand — see the look-ahead effect
+  // below and requestPlay() for direct taps.
+  useEffect(() => {
+    requestGeneration(sequence.slice(0, 2));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itineraryId, wanted.join(",")]);
+  }, [itineraryId, sequence.join(",")]);
 
   // ---------- queue: intro, stop0, next0, stop1, next1, … ----------
   const { queue, posByKey } = useMemo(() => {
@@ -239,6 +258,46 @@ export function ItineraryPlayer({
     audio.queueKey === itineraryId
       ? [...posByKey.entries()].find(([, p]) => p === audio.index)?.[0] ?? null
       : null;
+
+  // Look-ahead: once a clip is actually playing, warm up the next couple in
+  // line so the walk keeps flowing without a gap — but never further than
+  // that.
+  useEffect(() => {
+    if (!activeKey) return;
+    const pos = sequence.indexOf(activeKey);
+    if (pos === -1) return;
+    requestGeneration(sequence.slice(pos + 1, pos + 3));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeKey]);
+
+  // A tap on a stop that hasn't been generated yet: start generating it and
+  // remember to auto-play the moment it's ready (see the effect below).
+  const requestPlay = useCallback(
+    (key: string) => {
+      if (activeKey === key) {
+        audio.toggle();
+        return;
+      }
+      const status = clipsRef.current[key]?.status ?? "idle";
+      if (status === "ready") {
+        playKey(key);
+        return;
+      }
+      pendingAutoPlayRef.current = key;
+      if (status === "idle") requestGeneration([key]);
+    },
+    [activeKey, audio, playKey, requestGeneration],
+  );
+
+  useEffect(() => {
+    const key = pendingAutoPlayRef.current;
+    if (!key) return;
+    const p = posByKey.get(key);
+    if (p != null) {
+      pendingAutoPlayRef.current = null;
+      audio.playQueue(queue, p);
+    }
+  }, [posByKey, queue, audio]);
 
   const readyStopCount = stops.filter((_, i) => posByKey.has(kStop(i))).length;
 
@@ -301,17 +360,21 @@ export function ItineraryPlayer({
   const stopControl = (i: number) => ({
     clip: clips[kStop(i)] ?? { status: "idle" as AudioStatus },
     isPlaying: activeKey === kStop(i) && audio.playing,
-    onPlay: () =>
-      activeKey === kStop(i) ? audio.toggle() : playKey(kStop(i)),
-    onRetry: () => generate(kStop(i)),
+    onPlay: () => requestPlay(kStop(i)),
+    onRetry: () => {
+      pendingAutoPlayRef.current = kStop(i);
+      generate(kStop(i));
+    },
   });
   const nextControl = (i: number) => ({
     clip: clips[kNext(i)] ?? { status: "idle" as AudioStatus },
     isPlaying: activeKey === kNext(i) && audio.playing,
-    onPlay: () =>
-      activeKey === kNext(i) ? audio.toggle() : playKey(kNext(i)),
-    onRetry: () => generate(kNext(i)),
-    hasClip: wanted.includes(kNext(i)),
+    onPlay: () => requestPlay(kNext(i)),
+    onRetry: () => {
+      pendingAutoPlayRef.current = kNext(i);
+      generate(kNext(i));
+    },
+    hasClip: sequence.includes(kNext(i)),
   });
 
   // ---- Immersive navigation ----
@@ -502,13 +565,6 @@ export function ItineraryPlayer({
             {t("shareWhatsapp")}
           </Button>
         </div>
-        {readyStopCount > 0 && readyStopCount < stops.length && (
-          <p className="mt-2 flex items-center gap-1.5 text-xs text-text-muted">
-            <Loader2 className="size-3 animate-spin" />
-            {t("audioProgress", { ready: readyStopCount, total: stops.length })}
-          </p>
-        )}
-
         {intro_narration && (
           <div className="mt-5 rounded-lg border border-border bg-card p-4">
             <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-text-muted">
@@ -523,10 +579,11 @@ export function ItineraryPlayer({
                 t={t}
                 clip={clips["intro"] ?? { status: "idle" }}
                 isPlaying={activeKey === "intro" && audio.playing}
-                onPlay={() =>
-                  activeKey === "intro" ? audio.toggle() : playKey("intro")
-                }
-                onRetry={() => generate("intro")}
+                onPlay={() => requestPlay("intro")}
+                onRetry={() => {
+                  pendingAutoPlayRef.current = "intro";
+                  generate("intro");
+                }}
                 label={t("playIntro")}
               />
             </div>
@@ -664,7 +721,7 @@ function ClipButton({
   compact?: boolean;
   t: ReturnType<typeof useTranslations>;
 }) {
-  if (clip.status === "ready") {
+  if (clip.status === "ready" || clip.status === "idle") {
     return (
       <button
         type="button"
