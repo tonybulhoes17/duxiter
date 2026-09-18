@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CityCard } from "@/components/discovery/city-card";
+import { ScanFab } from "@/components/discovery/scan-fab";
 import { getCities } from "@/lib/queries";
 import type { Locale } from "@/i18n/config";
 
@@ -37,6 +38,8 @@ export default async function LandingPage() {
 
   return (
     <div className="pb-16">
+      <ScanFab />
+
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-border bg-background">
         <Image
