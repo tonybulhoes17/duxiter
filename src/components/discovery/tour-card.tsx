@@ -5,6 +5,7 @@ import { getLocalizedText, type Locale } from "@/i18n/config";
 import { Badge } from "@/components/ui/badge";
 import { StarRating } from "@/components/discovery/star-rating";
 import { formatPrice } from "@/lib/format";
+import { getTourLanguageFlag, getTourLanguageLabel } from "@/lib/tour-language";
 import type { TourWithMeta } from "@/lib/queries";
 
 export function TourCard({
@@ -48,6 +49,13 @@ export function TourCard({
           <Badge variant="secondary" className="backdrop-blur">
             {isMuseum ? <Landmark className="size-3" /> : <Footprints className="size-3" />}
             {isMuseum ? labels.museum : labels.street}
+          </Badge>
+          <Badge
+            variant="secondary"
+            className="backdrop-blur"
+            title={getTourLanguageLabel(tour.language)}
+          >
+            {getTourLanguageFlag(tour.language)}
           </Badge>
         </div>
         <div className="absolute right-3 top-3">

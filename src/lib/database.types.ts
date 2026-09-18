@@ -62,6 +62,7 @@ export type TourRow = {
   is_active: boolean;
   partner_id: string | null;
   view_count: number;
+  language: string;
   created_at: string;
   updated_at: string;
 };

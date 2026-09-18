@@ -11,6 +11,7 @@ import { LocalizedField, type LocalizedValue } from "@/components/admin/localize
 import { ImageUploadField } from "@/components/admin/upload-field";
 import type { AdminTourDetail } from "@/lib/admin-queries";
 import type { DifficultyLevel, TourStatus, TourType } from "@/lib/database.types";
+import { TOUR_LANGUAGES } from "@/lib/tour-language";
 
 type Num = number | "";
 
@@ -47,6 +48,7 @@ export function TourForm({
   const [price, setPrice] = useState<Num>(
     tour?.price_usd != null ? Number(tour.price_usd) : 0,
   );
+  const [language, setLanguage] = useState(tour?.language ?? "pt");
   const [status, setStatus] = useState<TourStatus>(tour?.status ?? "draft");
   const [saving, setSaving] = useState(false);
 
@@ -71,6 +73,7 @@ export function TourForm({
       estimated_duration_minutes: duration === "" ? null : Number(duration),
       distance_km: type === "museum" || distance === "" ? null : Number(distance),
       price_usd: price === "" ? 0 : Number(price),
+      language,
       status,
     };
     const res = await fetch(
@@ -108,7 +111,7 @@ export function TourForm({
 
   return (
     <div className="max-w-2xl space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-3">
         <div className="space-y-1.5">
           <Label>City *</Label>
           <select
@@ -141,6 +144,20 @@ export function TourForm({
               </button>
             ))}
           </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label>Audio language *</Label>
+          <select
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+            className="h-11 w-full rounded-md border border-border bg-elevated px-3 text-sm"
+          >
+            {TOUR_LANGUAGES.map((l) => (
+              <option key={l.code} value={l.code}>
+                {l.flag} {l.label}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 

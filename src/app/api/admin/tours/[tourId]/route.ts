@@ -16,6 +16,7 @@ const FIELDS = [
   "distance_km",
   "price_usd",
   "tags",
+  "language",
   "status",
 ] as const;
 

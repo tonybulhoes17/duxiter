@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { getAdminTours } from "@/lib/admin-queries";
 import { getLocalizedText } from "@/i18n/config";
 import { formatPrice } from "@/lib/format";
+import { getTourLanguageFlag, getTourLanguageLabel } from "@/lib/tour-language";
 import { cn } from "@/lib/utils";
 
 const STATUS_VARIANT: Record<
@@ -39,6 +40,7 @@ export default async function AdminToursPage() {
               <th className="p-3 font-medium">Title</th>
               <th className="p-3 font-medium">City</th>
               <th className="p-3 font-medium">Type</th>
+              <th className="p-3 font-medium">Language</th>
               <th className="p-3 font-medium">Stops</th>
               <th className="p-3 font-medium">Price</th>
               <th className="p-3 font-medium">Status</th>
@@ -65,6 +67,9 @@ export default async function AdminToursPage() {
                   {t.cityName ? getLocalizedText(t.cityName, "en") : "—"}
                 </td>
                 <td className="p-3 capitalize text-text-secondary">{t.type}</td>
+                <td className="p-3 text-text-secondary">
+                  {getTourLanguageFlag(t.language)} {getTourLanguageLabel(t.language)}
+                </td>
                 <td className="p-3">
                   <Link
                     href={`/admin/tours/${t.id}/stops`}
@@ -87,7 +92,7 @@ export default async function AdminToursPage() {
             ))}
             {tours.length === 0 && (
               <tr>
-                <td colSpan={6} className="p-6 text-center text-text-muted">
+                <td colSpan={7} className="p-6 text-center text-text-muted">
                   No tours yet.
                 </td>
               </tr>

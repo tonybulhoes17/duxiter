@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
       distance_km: b.distance_km ?? null,
       price_usd: b.price_usd ?? 0,
       tags: b.tags ?? [],
+      language: b.language ?? "pt",
       status: b.status ?? "draft",
       is_active: b.status === "approved",
     })

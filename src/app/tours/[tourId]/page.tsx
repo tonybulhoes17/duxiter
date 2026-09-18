@@ -9,6 +9,7 @@ import {
   Clock,
   Footprints,
   Landmark,
+  Languages,
   Lock,
   MapPin,
   MessageCircle,
@@ -27,6 +28,7 @@ import { getTourDetail } from "@/lib/queries";
 import { getTourAccess } from "@/lib/access";
 import { getSessionUser } from "@/lib/auth";
 import { freeStopsCount, formatPrice } from "@/lib/format";
+import { getTourLanguageFlag, getTourLanguageLabel } from "@/lib/tour-language";
 import { publicEnv } from "@/lib/env";
 import { getLocalizedText, type Locale } from "@/i18n/config";
 import { isUuid } from "@/lib/validate";
@@ -147,6 +149,11 @@ export default async function TourPage({ params }: Props) {
             <Badge variant="outline">
               <SignalHigh className="size-3" />
               {t("difficulty")}: {difficultyLabel}
+            </Badge>
+            <Badge variant="outline">
+              <Languages className="size-3" />
+              {t("audioLanguage")}: {getTourLanguageFlag(tour.language)}{" "}
+              {getTourLanguageLabel(tour.language)}
             </Badge>
             {tour.estimated_duration_minutes ? (
               <Badge variant="outline" className="font-metric">
