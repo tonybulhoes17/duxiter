@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatBrl, formatPrice } from "@/lib/format";
 import { publicEnv } from "@/lib/env";
+import { getStoredUtm } from "@/lib/utm";
 import type { Locale } from "@/i18n/config";
 import { cn } from "@/lib/utils";
 
@@ -107,6 +108,7 @@ export function BuyTourModal({
   async function pay() {
     setPaying(true);
     try {
+      const utm = getStoredUtm();
       const res = await fetch("/api/payments/create-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -118,6 +120,9 @@ export function BuyTourModal({
             : method === "both"
               ? undefined
               : method,
+          utmSource: utm?.utm_source,
+          utmMedium: utm?.utm_medium,
+          utmCampaign: utm?.utm_campaign,
         }),
       });
       const data = await res.json();

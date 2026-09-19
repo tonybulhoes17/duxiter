@@ -76,7 +76,7 @@ export default async function TourPage({ params }: Props) {
     <div className="pb-16">
       <TrackView event="tour_view" tourId={tour.id} />
       <Suspense>
-        <CheckoutResult tourId={tour.id} />
+        <CheckoutResult tourId={tour.id} priceUsd={Number(tour.price_usd)} />
       </Suspense>
       {/* Hero */}
       <section className="relative h-[42vh] min-h-[260px] w-full overflow-hidden border-b border-border">

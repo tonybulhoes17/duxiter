@@ -1,10 +1,13 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import { headers } from "next/headers";
 import { Plus_Jakarta_Sans, Inter, JetBrains_Mono } from "next/font/google";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { Providers } from "@/components/providers";
 import { AudioProvider } from "@/components/audio/audio-provider";
 import { PlayerBar } from "@/components/audio/player-bar";
+import { UtmCapture } from "@/components/analytics/utm-capture";
+import { MetaPixel } from "@/components/analytics/meta-pixel";
 import { SiteHeader } from "@/components/nav/site-header";
 import { SiteFooter } from "@/components/nav/site-footer";
 import { MobileNav } from "@/components/nav/mobile-nav";
@@ -75,6 +78,10 @@ export default async function RootLayout({
         className={`${display.variable} ${body.variable} ${mono.variable} min-h-dvh antialiased`}
       >
         <Providers locale={locale} messages={messages}>
+          <MetaPixel />
+          <Suspense fallback={null}>
+            <UtmCapture />
+          </Suspense>
           <AudioProvider>
             {immersive ? (
               <main className="min-h-dvh">{children}</main>

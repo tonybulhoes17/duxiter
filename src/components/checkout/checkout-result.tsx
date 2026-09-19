@@ -4,13 +4,20 @@ import { useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { trackPixelEvent } from "@/components/analytics/meta-pixel";
 
 /**
  * Reads ?checkout=success|cancelled on the tour page after returning from
  * Stripe. On success it refreshes server data a few times (so the webhook
  * has time to land) then sends the user into the player.
  */
-export function CheckoutResult({ tourId }: { tourId: string }) {
+export function CheckoutResult({
+  tourId,
+  priceUsd,
+}: {
+  tourId: string;
+  priceUsd?: number;
+}) {
   const t = useTranslations("checkout");
   const router = useRouter();
   const params = useSearchParams();
@@ -32,6 +39,12 @@ export function CheckoutResult({ tourId }: { tourId: string }) {
 
     if (status === "success") {
       toast.success(t("successTitle"), { description: t("successBody") });
+      trackPixelEvent("Purchase", {
+        content_ids: [tourId],
+        content_type: "product",
+        currency: "USD",
+        value: priceUsd,
+      });
       let tries = 0;
       const tick = () => {
         tries += 1;
@@ -45,7 +58,7 @@ export function CheckoutResult({ tourId }: { tourId: string }) {
       };
       setTimeout(tick, 1200);
     }
-  }, [params, router, t, tourId]);
+  }, [params, router, t, tourId, priceUsd]);
 
   return null;
 }

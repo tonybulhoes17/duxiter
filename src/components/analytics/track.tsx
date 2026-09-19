@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { getStoredUtm } from "@/lib/utm";
 
 type EventType =
   | "tour_view"
@@ -19,7 +20,12 @@ export function track(
   } = {},
 ) {
   try {
-    const body = JSON.stringify({ event_type, ...payload });
+    const utm = getStoredUtm();
+    const body = JSON.stringify({
+      event_type,
+      ...payload,
+      metadata: utm ? { ...payload.metadata, ...utm } : payload.metadata,
+    });
     if (typeof navigator !== "undefined" && "sendBeacon" in navigator) {
       navigator.sendBeacon(
         "/api/analytics/event",

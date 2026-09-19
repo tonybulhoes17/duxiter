@@ -22,7 +22,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  let body: { tourId?: string; code?: string; method?: Method };
+  let body: {
+    tourId?: string;
+    code?: string;
+    method?: Method;
+    utmSource?: string;
+    utmMedium?: string;
+    utmCampaign?: string;
+  };
   try {
     body = await req.json();
   } catch {
@@ -86,6 +93,9 @@ export async function POST(req: NextRequest) {
         discount_amount_usd: quote.discountUsd,
         status: "completed",
         expires_at: accessExpiryFrom(),
+        utm_source: body.utmSource ?? null,
+        utm_medium: body.utmMedium ?? null,
+        utm_campaign: body.utmCampaign ?? null,
       })
       .select("id")
       .single();
@@ -119,6 +129,9 @@ export async function POST(req: NextRequest) {
       discount_code_id: quote.code?.id ?? null,
       discount_amount_usd: quote.discountUsd,
       status: "pending",
+      utm_source: body.utmSource ?? null,
+      utm_medium: body.utmMedium ?? null,
+      utm_campaign: body.utmCampaign ?? null,
     })
     .select("id")
     .single();
@@ -170,6 +183,9 @@ export async function POST(req: NextRequest) {
       discountUsd: String(quote.discountUsd),
       finalPriceUsd: String(quote.finalPriceUsd),
       fxRate: String(fxRate),
+      utmSource: body.utmSource ?? "",
+      utmMedium: body.utmMedium ?? "",
+      utmCampaign: body.utmCampaign ?? "",
     },
   });
 

@@ -22,6 +22,7 @@ export const publicEnv = {
   stripePublishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "",
   pixEnabled: process.env.NEXT_PUBLIC_PIX_ENABLED === "true",
   partnersEnabled: process.env.NEXT_PUBLIC_PARTNERS_ENABLED === "true",
+  metaPixelId: process.env.NEXT_PUBLIC_META_PIXEL_ID ?? "",
 };
 
 export const isStripeConfigured =
