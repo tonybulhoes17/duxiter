@@ -29,6 +29,7 @@ import { getTourAccess } from "@/lib/access";
 import { getSessionUser } from "@/lib/auth";
 import { freeStopsCount, formatPrice } from "@/lib/format";
 import { getTourLanguageFlag, getTourLanguageLabel } from "@/lib/tour-language";
+import { logServerTourView } from "@/lib/analytics-server";
 import { publicEnv } from "@/lib/env";
 import { getLocalizedText, type Locale } from "@/i18n/config";
 import { isUuid } from "@/lib/validate";
@@ -36,6 +37,7 @@ import { cn } from "@/lib/utils";
 
 interface Props {
   params: { tourId: string };
+  searchParams: { utm_source?: string; utm_medium?: string; utm_campaign?: string };
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -49,12 +51,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function TourPage({ params }: Props) {
+export default async function TourPage({ params, searchParams }: Props) {
   if (!isUuid(params.tourId)) notFound();
 
   const locale = (await getLocale()) as Locale;
   const tour = await getTourDetail(params.tourId);
   if (!tour) notFound();
+
+  await logServerTourView(tour.id, searchParams);
 
   const t = await getTranslations("tour");
   const user = await getSessionUser();

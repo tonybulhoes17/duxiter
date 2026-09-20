@@ -24,7 +24,9 @@ export function track(
     const body = JSON.stringify({
       event_type,
       ...payload,
-      metadata: utm ? { ...payload.metadata, ...utm } : payload.metadata,
+      metadata: utm
+        ? { ...payload.metadata, ...utm, capture: "client" }
+        : payload.metadata,
     });
     if (typeof navigator !== "undefined" && "sendBeacon" in navigator) {
       navigator.sendBeacon(
