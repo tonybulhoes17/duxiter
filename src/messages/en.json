@@ -81,6 +81,7 @@
     "buy": "Unlock full tour",
     "buyFor": "Unlock for {price}",
     "start": "Start tour",
+    "tryFree": "Try for free",
     "previewNote": "First {count, plural, one {# stop} other {# stops}} free. Unlock the rest for {price}.",
     "accessExpired": "Your access expired — repurchase to continue.",
     "locked": "Locked",

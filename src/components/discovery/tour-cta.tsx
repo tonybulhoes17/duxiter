@@ -53,6 +53,12 @@ export function TourCta({
           </Link>
         </Button>
       )}
+      <Button asChild size="lg" variant="outline" className="w-full sm:w-auto">
+        <Link href={`/tours/${tourId}/play`}>
+          <Play className="size-4" />
+          {t("tryFree")}
+        </Link>
+      </Button>
     </div>
   );
 }

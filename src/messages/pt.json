@@ -81,6 +81,7 @@
     "buy": "Liberar passeio completo",
     "buyFor": "Liberar por {price}",
     "start": "Iniciar passeio",
+    "tryFree": "Ouvir grátis",
     "previewNote": "{count, plural, one {A primeira parada é grátis} other {As primeiras # paradas são grátis}}. Libere o restante por {price}.",
     "accessExpired": "Seu acesso expirou — compre novamente para continuar.",
     "locked": "Bloqueado",

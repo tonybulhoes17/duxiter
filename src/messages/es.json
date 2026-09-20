@@ -81,6 +81,7 @@
     "buy": "Desbloquear tour completo",
     "buyFor": "Desbloquear por {price}",
     "start": "Iniciar tour",
+    "tryFree": "Escuchar gratis",
     "previewNote": "{count, plural, one {La primera parada es gratis} other {Las primeras # paradas son gratis}}. Desbloquea el resto por {price}.",
     "accessExpired": "Tu acceso expiró — vuelve a comprar para continuar.",
     "locked": "Bloqueado",
