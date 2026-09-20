@@ -6,8 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionUser } from "@/lib/auth";
 import { getItineraryAccess } from "@/lib/itinerary-access";
 import { ITINERARY_FREE_STOPS, ITINERARY_PRICE_USD } from "@/lib/itinerary-pricing";
-import { getUsdToBrlRate, usdToBrl } from "@/lib/fx";
-import { formatBrl } from "@/lib/format";
+import { formatPrice } from "@/lib/format";
 import { isSupabaseConfigured } from "@/lib/env";
 import { normalizeItinerary } from "@/lib/itinerary";
 import { isUuid } from "@/lib/validate";
@@ -47,14 +46,11 @@ export default async function ItineraryPage({ params }: Props) {
   const access = await getItineraryAccess(it.id, user?.id ?? null);
   const purchased = access === "purchased";
 
-  const [audios, fxRate] = await Promise.all([
-    createAdminClient()
-      .from("itinerary_audios")
-      .select("stop_index, kind, status, audio_url, duration_seconds")
-      .eq("itinerary_id", it.id),
-    getUsdToBrlRate(),
-  ]);
-  const priceLabel = formatBrl(usdToBrl(ITINERARY_PRICE_USD, fxRate), locale);
+  const audios = await createAdminClient()
+    .from("itinerary_audios")
+    .select("stop_index, kind, status, audio_url, duration_seconds")
+    .eq("itinerary_id", it.id);
+  const priceLabel = formatPrice(ITINERARY_PRICE_USD, locale);
 
   // Lock stop content beyond the free preview until purchased. Coordinates
   // stay visible on every stop so the map still shows the whole route — only

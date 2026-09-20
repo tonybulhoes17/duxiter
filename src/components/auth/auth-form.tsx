@@ -22,7 +22,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState<null | "email" | "google" | "apple">(null);
+  const [loading, setLoading] = useState<null | "email" | "google">(null);
 
   const supabase = useMemo(
     () => (isSupabaseConfigured ? createClient() : null),
@@ -30,7 +30,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
   );
   const redirectTo = `${typeof window !== "undefined" ? window.location.origin : ""}/auth/callback?next=${encodeURIComponent(next)}`;
 
-  async function oauth(provider: "google" | "apple") {
+  async function oauth(provider: "google") {
     if (!supabase) return toast.error(t("genericError"));
     setLoading(provider);
     const { error } = await supabase.auth.signInWithOAuth({
@@ -84,14 +84,6 @@ export function AuthForm({ mode }: { mode: Mode }) {
         >
           {loading === "google" ? <Loader2 className="size-4 animate-spin" /> : null}
           {t("continueWithGoogle")}
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() => oauth("apple")}
-          disabled={loading !== null}
-        >
-          {loading === "apple" ? <Loader2 className="size-4 animate-spin" /> : null}
-          {t("continueWithApple")}
         </Button>
       </div>
 
