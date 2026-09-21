@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { formatBrl, formatPrice } from "@/lib/format";
 import { publicEnv } from "@/lib/env";
 import { getStoredUtm } from "@/lib/utm";
+import { track } from "@/components/analytics/track";
 import type { Locale } from "@/i18n/config";
 import { cn } from "@/lib/utils";
 
@@ -104,6 +105,10 @@ export function BuyTourModal({
   useEffect(() => {
     if (open && !quote) fetchQuote(null);
   }, [open, quote, fetchQuote]);
+
+  useEffect(() => {
+    if (open) track("tour_unlock_click", { tour_id: tourId });
+  }, [open, tourId]);
 
   async function pay() {
     setPaying(true);

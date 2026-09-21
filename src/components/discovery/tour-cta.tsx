@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Lock, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BuyTourModal } from "@/components/checkout/buy-tour-modal";
+import { track } from "@/components/analytics/track";
 import type { AccessState } from "@/lib/access";
 
 export function TourCta({
@@ -47,7 +48,10 @@ export function TourCta({
         />
       ) : (
         <Button asChild size="lg" className="w-full sm:w-auto">
-          <Link href={`/login?next=/tours/${tourId}`}>
+          <Link
+            href={`/login?next=/tours/${tourId}`}
+            onClick={() => track("tour_unlock_click", { tour_id: tourId })}
+          >
             <Lock className="size-4" />
             {t("buyFor", { price: priceLabel })}
           </Link>

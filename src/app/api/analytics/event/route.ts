@@ -8,6 +8,7 @@ const EVENT_TYPES = new Set([
   "tour_view",
   "tour_start",
   "tour_complete",
+  "tour_unlock_click",
   "city_view",
   "itinerary_generate",
   "camera_open",
