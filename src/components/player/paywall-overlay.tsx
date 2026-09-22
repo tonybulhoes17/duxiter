@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BuyTourModal } from "@/components/checkout/buy-tour-modal";
+import { track } from "@/components/analytics/track";
 
 export function PaywallOverlay({
   tourId,
@@ -37,7 +38,10 @@ export function PaywallOverlay({
         />
       ) : (
         <Button asChild>
-          <Link href={`/login?next=/tours/${tourId}/play`}>
+          <Link
+            href={`/login?next=/tours/${tourId}/play`}
+            onClick={() => track("tour_unlock_click", { tour_id: tourId })}
+          >
             {t("unlockCta", { price: priceLabel })}
           </Link>
         </Button>
